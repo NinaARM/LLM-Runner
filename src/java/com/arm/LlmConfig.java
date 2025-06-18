@@ -15,13 +15,14 @@ public class LlmConfig
 {
     private String modelTag;
     private String userTag;
+    private String endTag;
     private String modelPath;
     private String llmPrefix;
     private List<String> stopWords;
     private int numThreads;
 
     /**
-     * Minimal constructor without userTag and numThreads
+     * Minimal constructor without userTag, endTag and numThreads
      *
      * @param modelTag   tag for the model
      * @param stopWords  stop words to use
@@ -30,7 +31,7 @@ public class LlmConfig
      */
     public LlmConfig(String modelTag, List<String> stopWords, String modelPath, String llmPrefix)
     {
-        this(modelTag, stopWords, modelPath, llmPrefix, "", 4);
+        this(modelTag, stopWords, modelPath, llmPrefix, "", "", 4);
     }
 
     /**
@@ -41,15 +42,16 @@ public class LlmConfig
      * @param modelPath  path to the model
      * @param llmPrefix  llm prefix to use
      * @param userTag    user tag to use
+     * @param endTag     end tag to use
      */
-    public LlmConfig(String modelTag, List<String> stopWords, String modelPath, String llmPrefix, String userTag)
+    public LlmConfig(String modelTag, List<String> stopWords, String modelPath, String llmPrefix, String userTag, String endTag)
     {
       // Use 4 threads by default
-      this(modelTag, stopWords, modelPath, llmPrefix, userTag, 4);
+      this(modelTag, stopWords, modelPath, llmPrefix, userTag, endTag, 4);
     }
 
     /**
-     * Minimal constructor without userTag
+     * Minimal constructor without userTag, and endTag
      *
      * @param modelTag   tag for the model
      * @param stopWords  stop words to use
@@ -57,9 +59,9 @@ public class LlmConfig
      * @param llmPrefix  llm prefix to use
      * @param numThreads number of threads to use
      */
-    public LlmConfig(String modelTag, List<String> stopWords, String modelPath, String llmPrefix,int numThreads)
+    public LlmConfig(String modelTag, List<String> stopWords, String modelPath, String llmPrefix, int numThreads)
     {
-       this(modelTag, stopWords, modelPath, llmPrefix, "", numThreads);
+       this(modelTag, stopWords, modelPath, llmPrefix, "", "", numThreads);
     }
 
     /**
@@ -70,16 +72,18 @@ public class LlmConfig
      * @param modelPath  path to the model
      * @param llmPrefix  llm prefix to use
      * @param userTag    user tag to use
+     * @param endTag     end tag to use
      * @param numThreads number of threads to use
      */
     public LlmConfig(String modelTag, List<String> stopWords, String modelPath,
-                     String llmPrefix, String userTag, int numThreads)
+                     String llmPrefix, String userTag, String endTag, int numThreads)
     {
           this.modelTag = modelTag;
           this.stopWords = stopWords;
           this.modelPath = modelPath;
           this.llmPrefix = llmPrefix;
           this.userTag = userTag;
+          this.endTag = endTag;
           this.numThreads = numThreads;
     }
 
@@ -100,6 +104,15 @@ public class LlmConfig
     public String getUserTag()
     {
         return this.userTag;
+    }
+    /**
+     * Gets the end tag.
+     *
+     * @return The end tag.
+     */
+    public String getEndTag()
+    {
+        return this.endTag;
     }
 
     /**
@@ -162,6 +175,16 @@ public class LlmConfig
     }
 
     /**
+     * Sets the end tag.
+     *
+     * @param endTag The end tag to set.
+     */
+    public void setEndTag(String endTag)
+    {
+        this.endTag = endTag;
+    }
+
+    /**
      * Sets the list of stop words.
      *
      * @param stopWords The list of stop words to set.
@@ -192,10 +215,10 @@ public class LlmConfig
     }
 
     /**
-    * Sets the number of Threads.
-    * @param numThreads count of threads to use for LLM.
-    */
-
+     * Sets the number of Threads.
+     *
+     * @param numThreads count of threads to use for LLM.
+     */
     public void setNumThreads(int numThreads)
     {
         this.numThreads = numThreads;

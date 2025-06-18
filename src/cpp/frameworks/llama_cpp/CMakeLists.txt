@@ -10,6 +10,7 @@ project(llama-cpp-wrapper
         LANGUAGES C CXX ASM)
 
 include(FetchContent)
+include(check-flag)
 
 # Where should llama.cpp sources be cloned into?
 # It might make sense to download sources into resources as well and not
@@ -29,22 +30,14 @@ set(LLAMA_GIT_SHA "a4090d1"
         "Git commit SHA for llama.cpp repo")
 
 set(LLAMA_BUILD_EXAMPLES ${BUILD_EXECUTABLE} CACHE BOOL "Build llama.cpp examples")
+set(LLAMA_CURL           OFF CACHE BOOL "llama: use libcurl to download model from an URL")
 
-# If the user has NOT explicitly set GGML_CPU_KLEIDIAI
-if (NOT DEFINED GGML_CPU_KLEIDIAI)
-    # if we are on arm64/aarch64, then default KleidiAI to ON.
-    if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
-        set(GGML_CPU_KLEIDIAI ON CACHE BOOL
-            "Enable KleidiAI by default on ${CMAKE_SYSTEM_PROCESSOR}")
-        message(STATUS "KleidiAI enabled by default")
-    # if we are NOT on arm64/aarch64, then default KleidiAI to OFF.
-    else()
-        set(GGML_CPU_KLEIDIAI OFF CACHE BOOL
-            "Disable KleidiAI by default on ${CMAKE_SYSTEM_PROCESSOR}")
-        message(STATUS "KleidiAI disabled by default")
-    endif()
-else ()
-    message(STATUS "KleidiAI: ${GGML_CPU_KLEIDIAI}")
+# KleidiAI configuration
+if(DEFINED GGML_CPU_KLEIDIAI)
+    message(FATAL_ERROR "Don't use framework specific KleidiAI flag, configure 'USE_KLEIDIAI' flag instead.")
+else()
+    set_kleidiai_flag()
+    set(GGML_CPU_KLEIDIAI  ${USE_KLEIDIAI})
 endif()
 
 set(GGML_BUILD_NUMBER 1) # We do a shallow clone `--depth=1`

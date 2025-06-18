@@ -1,27 +1,70 @@
 {
-  "models": [
-    {
+  "models": {
+    "llama.cpp":
+    [
+      {
       "name": "phi-2 model",
       "purpose": "To enable basic testing",
-      "destination": "model.gguf",
+      "destination": "llama.cpp/model.gguf",
       "url": "https://huggingface.co/ggml-org/models/resolve/main/phi-2/ggml-model-q4_0.gguf?download=true",
       "sha256sum": "fd506d24a4bee6997a566b02b65715af5cadb433c6a3a47a74b467badc5727ca"
-    }
-  ],
-  "test_utils": [
+      }
+    ],
+    "onnxruntime-genai" :
+    [
+      {
+      "name": "genai config file",
+      "purpose": "Model configuration file",
+      "destination": "onnxruntime-genai/genai_config.json",
+      "url": "https://huggingface.co/microsoft/Phi-4-mini-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/genai_config.json",
+      "sha256sum": "0fcfa1e663f2bc867f8dc62fae65dd0924f0a4d68b43d1234df742dd19171470"
+      },
+      {
+      "name": "phi-4-mini-instruct-onnx (CPU/mobile)",
+      "purpose": "ONNX model for basic testing",
+      "destination": "onnxruntime-genai/model.onnx",
+      "url": "https://huggingface.co/microsoft/Phi-4-mini-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx",
+      "sha256sum": "701aa5d185b6a782bc27104a990dd5b634fa507840b7c42f7ee6f1fb812d0b83"
+      },
+      {
+      "name": "phi-4-mini-instruct-onnx.data (CPU/mobile)",
+      "purpose": "ONNX model data for basic testing",
+      "destination": "onnxruntime-genai/model.onnx.data",
+      "url": "https://huggingface.co/microsoft/Phi-4-mini-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/model.onnx.data",
+      "sha256sum": "cb0267fa60befa1a4ade8c98b6d32a3d67f51abbd307c7f793f132e8d9092131"
+      },
+      {
+      "name": "tokenizer file",
+      "purpose": "Tokenizer for the model",
+      "destination": "onnxruntime-genai/tokenizer.json",
+      "url": "https://huggingface.co/microsoft/Phi-4-mini-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/tokenizer.json",
+      "sha256sum": "382cc235b56c725945e149cc25f191da667c836655efd0857b004320e90e91ea"
+      },
+      {
+      "name": "tokenizer config file",
+      "purpose": "Tokenizer config for the model",
+      "destination": "onnxruntime-genai/tokenizer_config.json",
+      "url": "https://huggingface.co/microsoft/Phi-4-mini-instruct-onnx/resolve/main/cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/tokenizer_config.json",
+      "sha256sum": "c565326a315fbe62cda093a59d298828c8f3f823122661325f41f3ba577a7dec"
+      }
+    ]
+  },
+
+  "test_utils":
+  [
     {
-      "name": "hamcrest",
-      "purpose": "JUnit tests for validating the Java API",
-      "destination": "hamcrest-all-1.3.jar",
-      "url": "https://repo1.maven.org/maven2/org/hamcrest/hamcrest-all/1.3/hamcrest-all-1.3.jar",
-      "sha256sum": "4877670629ab96f34f5f90ab283125fcd9acb7e683e66319a68be6eb2cca60de"
+    "name": "hamcrest",
+    "purpose": "JUnit tests for validating the Java API",
+    "destination": "hamcrest-all-1.3.jar",
+    "url": "https://repo1.maven.org/maven2/org/hamcrest/hamcrest-all/1.3/hamcrest-all-1.3.jar",
+    "sha256sum": "4877670629ab96f34f5f90ab283125fcd9acb7e683e66319a68be6eb2cca60de"
     },
     {
-      "name": "JUnit",
-      "purpose": "JUnit tests for validating the Java API",
-      "destination": "junit-4.13.2.jar",
-      "url": "https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar",
-      "sha256sum": "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3"
+    "name": "JUnit",
+    "purpose": "JUnit tests for validating the Java API",
+    "destination": "junit-4.13.2.jar",
+    "url": "https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar",
+    "sha256sum": "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3"
     }
   ]
 }

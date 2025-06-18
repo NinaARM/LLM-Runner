@@ -69,3 +69,8 @@ std::string LLM::BenchModel(int& nPrompts, int& nEvalPrompts, int& nMaxSeq, int&
 {
     return this->m_impl->BenchModel(nPrompts, nEvalPrompts, nMaxSeq, nRep);
 }
+
+std::string LLM::GetFrameworkType()
+{
+    return this->m_impl->GetFrameworkType();
+}

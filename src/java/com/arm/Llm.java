@@ -31,6 +31,7 @@ public class Llm extends SubmissionPublisher<String>
     private long llmPtr = 0;
     private String modelTag = "";
     private String userTag = "";
+    private String endTag = "";
     private List<String> stopWords = null;
     private String cachedToken = "";
     private String emitToken = "";
@@ -43,14 +44,17 @@ public class Llm extends SubmissionPublisher<String>
     /**
      * Method to create LlmConfig cpp instance from params.
      * @param modelTag name used to refer the model
+     * @param userTag tag used to refer the user
+     * @param endTag tag to specify the end of the query
      * @param modelPath path to load model from
      * @param llmPrefix Initial-prompt to load into llm before query
      * @param numThreads Number of threads for inference
      * @param batchSize batch size used to chunk queries
      * @return pointer to llm config
      */
-    public native long createLlmConfig(String modelTag, String modelPath, String llmPrefix,
-                                       int numThreads, int batchSize);
+    public native long createLlmConfig(String modelTag, String userTag, String endTag,
+                                       String modelPath, String llmPrefix, int numThreads,
+                                       int batchSize);
     /**
      * Method for loading LLM model
      * @param LlmConfig load model from LlmConfig
@@ -107,7 +111,6 @@ public class Llm extends SubmissionPublisher<String>
 
     /**
      * Method to decode answers one by one, once prefill stage is completed
-     *
      * @param nPrompts     prompt length used for benchmarking
      * @param nEvalPrompts number of generated tokens for benchmarking
      * @param nMaxSeq      sequence number
@@ -122,6 +125,12 @@ public class Llm extends SubmissionPublisher<String>
     );
 
     /**
+     * Method to get framework type
+     * @return string framework type
+     */
+    public native String getFrameworkType();
+
+    /**
      * Method to separate Initialization from constructor
      * @param llmConfig type configuration file to load model
      */
@@ -130,10 +139,12 @@ public class Llm extends SubmissionPublisher<String>
         this.stopWords = llmConfig.getStopWords();
         this.modelTag = llmConfig.getModelTag();
         this.userTag = llmConfig.getUserTag();
+        this.endTag = llmConfig.getEndTag();
         this.llmPrefix = llmConfig.getLlmPrefix();
         this.numThreads = llmConfig.getNumThreads();
-        long configPtr = createLlmConfig(this.modelTag,llmConfig.getModelPath(),
-                                         this.llmPrefix,this.numThreads,this.batchSize);
+        long configPtr = createLlmConfig(this.modelTag, this.userTag, this.endTag,
+                                         llmConfig.getModelPath(), this.llmPrefix,
+                                         this.numThreads, this.batchSize);
         this.llmPtr = loadModel(configPtr);
     }
 
@@ -143,7 +154,6 @@ public class Llm extends SubmissionPublisher<String>
      */
     public void setSubscriber(Flow.Subscriber<String> subscriber)
     {
-        System.out.println("subscribed set from llama");
         this.subscribe(subscriber);
     }
 
@@ -156,9 +166,9 @@ public class Llm extends SubmissionPublisher<String>
         String query = "";
         AtomicBoolean stop = new AtomicBoolean(false);
         if (evaluatedOnce.get())
-            query = userTag + Query + modelTag;
+            query = userTag + Query + endTag + modelTag;
         else
-            query = llmPrefix + Query + modelTag;
+            query = llmPrefix + userTag + Query + endTag + modelTag;
         encode(query);
         evaluatedOnce.set(true);
         while (getChatProgress()<100)
@@ -189,9 +199,9 @@ public class Llm extends SubmissionPublisher<String>
         String query = "";
         boolean stop = false;
         if (evaluatedOnce.get())
-            query = userTag + Query + modelTag;
+            query = userTag + Query + endTag + modelTag;
         else
-            query = llmPrefix + Query + modelTag;
+            query = llmPrefix + userTag + Query + endTag + modelTag;
         encode(query);
         evaluatedOnce.set(true);
         while (getChatProgress()<100)

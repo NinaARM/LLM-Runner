@@ -7,14 +7,26 @@
 #include <stdexcept>
 
 LlmConfig::LlmConfig(const std::string& modelTag,
+                     const std::string& userTag,
+                     const std::string& endTag,
                      const std::string& modelPath,
                      const std::string& llmPrefix,
                      int numThreads,
                      int batchSize) :
-    m_modelTag(modelTag), m_modelPath(modelPath), m_llmPrefix(llmPrefix)
+    m_modelTag(modelTag), m_userTag(userTag), m_endTag(endTag), m_modelPath(modelPath), m_llmPrefix(llmPrefix)
 {
     SetNumThreads(numThreads);
     SetBatchSize(batchSize);
+}
+
+std::string LlmConfig::GetEndTag() const
+{
+    return this->m_endTag;
+}
+
+std::string LlmConfig::GetUserTag() const
+{
+    return this->m_userTag;
 }
 
 std::string LlmConfig::GetModelTag() const
@@ -45,6 +57,16 @@ int LlmConfig::GetBatchSize() const
 void LlmConfig::SetModelTag(const std::string& modelIdentifier)
 {
     this->m_modelTag = modelIdentifier;
+}
+
+void LlmConfig::SetUserTag(const std::string& userTag)
+{
+    this->m_userTag = userTag;
+}
+
+void LlmConfig::SetEndTag(const std::string& endTag)
+{
+    this->m_endTag = endTag;
 }
 
 void LlmConfig::SetModelPath(const std::string& basePath)

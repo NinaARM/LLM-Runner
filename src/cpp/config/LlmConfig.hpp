@@ -15,6 +15,8 @@
 class LlmConfig {
 private:
     std::string m_modelTag{};
+    std::string m_userTag{};
+    std::string m_endTag{};
     std::string m_modelPath{};
     std::string m_llmPrefix{};
     int m_numThreads{};
@@ -24,18 +26,34 @@ public:
     /**
      * LlmConfig
      * @param modelTag    Model tag for the LLM model
+     * @param userTag     User tag for the prompt
+     * @param endTag      End tag for the prompt
      * @param modelPath   Path to the model
      * @param llmPrefix   LLM prefix to use
      * @param numThreads  Number of threads to use
      * @param batchSize   Batch size to use
      */
     LlmConfig(const std::string& modelTag,
+              const std::string& userTag,
+              const std::string& endTag,
               const std::string& modelPath,
               const std::string& llmPrefix,
               int numThreads,
               int batchSize);
 
     LlmConfig() = default;
+
+    /**
+     * Returns the end tag string.
+     * @return endTag
+     */
+    std::string GetEndTag() const;
+
+    /**
+     * Returns the user tag string.
+     * @return userTag
+     */
+    std::string GetUserTag() const;
 
     /**
      * Returns the model tag string (The name to appear in conversation with the LLM).
@@ -73,6 +91,20 @@ public:
      * respond appropriately
      */
     void SetModelTag(const std::string& modelIdentifier);
+
+    /**
+     * Sets the user tag
+     * @param userTag is the user tag added at the beginning of each user question to make model
+     * respond appropriately
+     */
+    void SetUserTag(const std::string& userTag);
+
+    /**
+     * Sets the end tag
+     * @param endTag is the end tag added at the end of each user question to make model
+     * respond appropriately
+     */
+    void SetEndTag(const std::string& endTag);
 
     /**
      * Sets the file path to the model.

@@ -91,6 +91,12 @@ public:
      */
 
     std::string BenchModel(int& nPrompts, int& nEvalPrompts, int& nMaxSeq, int& nRep);
+
+    /**
+     * Method to get framework type
+     * @return string framework type
+     */
+    std::string GetFrameworkType();
 };
 
 #endif /* ARM_LLM_HPP */

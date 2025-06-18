@@ -288,6 +288,11 @@ size_t LLM::LLMImpl::GetChatProgress() const
     return this->m_contextFilled;
 }
 
+std::string LLM::LLMImpl::GetFrameworkType()
+{
+    return this->m_frameworkType;
+}
+
 std::string LLM::LLMImpl::BenchModel(int& prompts, int& eval_prompts, int& n_max_sq, int& n_rep)
 {
     auto prompts_avg      = 0.0;
@@ -435,3 +440,4 @@ static bool is_valid_utf8(const char* string)
     }
     return true;
 }
+

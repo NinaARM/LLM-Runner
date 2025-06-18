@@ -50,39 +50,38 @@
         }
       }
     },
-
-	  {
-		  "name": "llama.cpp",
-		  "description": "Build with llama.cpp as the backend.",
-		  "hidden": true,
-		  "cacheVariables": {
-			  "LLM_DEP_NAME": {
-				  "type": "STRING",
-				  "value": "llama.cpp"
-			  }
-		  }
-	  },
-	  {
-		  "name": "build-shared-enabled",
-		  "description": "Configure with shared libraries enabled.",
-		  "hidden": true,
-		  "cacheVariables": {
-			  "BUILD_SHARED_LIBS": {
-				  "type": "BOOL",
-				  "value": "ON"
-			  }
-		  }
-	  },
-	  {
-		  "name": "build-shared-disabled",
-		  "description": "Configure with shared libraries disabled.",
-		  "hidden": true,
-		  "cacheVariables": {
-			  "BUILD_SHARED_LIBS": {
-				  "type": "BOOL",
-				  "value": "OFF"
-			  }
-		  }
-	  }
-	  ]
+    {
+      "name": "llama.cpp",
+      "description": "Build with llama.cpp as the backend.",
+      "hidden": true,
+      "cacheVariables": {
+        "LLM_FRAMEWORK": {
+          "type": "STRING",
+          "value": "llama.cpp"
+        }
+      }
+    },
+    {
+      "name": "build-shared-enabled",
+      "description": "Configure with shared libraries enabled.",
+      "hidden": true,
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": {
+          "type": "BOOL",
+          "value": "ON"
+        }
+      }
+    },
+    {
+      "name": "build-shared-disabled",
+      "description": "Configure with shared libraries disabled.",
+      "hidden": true,
+      "cacheVariables": {
+        "BUILD_SHARED_LIBS": {
+          "type": "BOOL",
+          "value": "OFF"
+        }
+      }
+    }
+  ]
 }

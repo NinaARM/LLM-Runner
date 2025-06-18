@@ -28,13 +28,13 @@ public:
     ~LLMImpl();
 
     /**
-     * Method to Initialize a llama_model
+     * Method to initialize a llama_model
      * @param config Configuration class with model's parameter and user defined parameters
      */
     void LlmInit(const LlmConfig& config);
 
     /**
-     * Method to Free all allocations pertaining to llama model
+     * Method to free all allocations pertaining to llama model
      */
     void FreeLlm();
 
@@ -62,7 +62,7 @@ public:
     std::string SystemInfo();
 
     /**
-     * Method to reset Conversation history and preserve Model's character prefix.
+     * Method to reset conversation history and preserve model's character prefix.
      * If model's prefix is not defined all conversation history would be cleared
      */
     void ResetContext();
@@ -75,18 +75,18 @@ public:
 
     /**
      * Method to wrap CompletionLoop function
-     * @return the next Token for Encoded Prompt
+     * @return the next token for encoded prompt
      */
     std::string NextToken();
 
     /**
-     * @brief The Method return the percentage of chat context filled
+     * The Method return the percentage of chat context filled
      * @return chat capacity filled in cache as percentage number
      */
     size_t GetChatProgress() const;
 
     /**
-     * @brief Benchmarks the performance of the LLM model.
+     * Benchmarks the performance of the LLM model.
      *
      * This function evaluates the model's performance by processing a specified number of prompts
      * and generating text sequences. It measures the speed of prompt evaluation and text
@@ -101,10 +101,16 @@ public:
      * size, number of parameters, backend information, and performance metrics for prompt
      * evaluation and text generation.
      */
-
     std::string BenchModel(int& prompts, int& eval_prompts, int& n_max_sq, int& n_rep);
 
+    /**
+     * Method to get framework type
+     * @return string framework type
+     */
+    std::string GetFrameworkType();
+
 private:
+    std::string m_frameworkType{"llama.cpp"};
     llama_context* m_llmContext{nullptr};
     llama_model* m_llmModel{nullptr};
     llama_batch m_llmBatch{};

@@ -38,3 +38,23 @@ function(check_compiler_support LANG FLAG)
         message(STATUS "The compiler supports the ${LANG} flag ${FLAG}!")
     endif()
 endfunction()
+
+function(set_kleidiai_flag)
+
+    # If the user has NOT explicitly set onnxruntime_USE_KLEIDIAI
+    if (NOT DEFINED USE_KLEIDIAI)
+        # if we are on arm64/aarch64, then default KleidiAI to ON.
+        if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+            set(USE_KLEIDIAI ON CACHE BOOL
+                "Enable KleidiAI by default on ${CMAKE_SYSTEM_PROCESSOR}")
+            message(STATUS "KleidiAI enabled by default")
+        # if we are NOT on arm64/aarch64, then default KleidiAI to OFF.
+        else()
+            set(USE_KLEIDIAI OFF CACHE BOOL
+                "Disable KleidiAI by default on ${CMAKE_SYSTEM_PROCESSOR}")
+            message(STATUS "KleidiAI disabled by default")
+        endif()
+    else ()
+        message(STATUS "KleidiAI: ${USE_KLEIDIAI}")
+    endif()
+endfunction()

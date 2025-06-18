@@ -49,7 +49,8 @@ TEST_CASE("Test Llm-Wrapper class")
     SetupTestConfig(stopWordsStream, &configTest, STOP_WORDS);
 
     std::string response;
-    std::string question         = "What is the capital of France?" + configTest.GetModelTag();
+    std::string question         = configTest.GetUserTag() +"What is the capital of France?" +
+                                   configTest.GetEndTag() + configTest.GetModelTag();
     std::string prefixedQuestion = configTest.GetLlmPrefix() + question;
     LLM llm;
 

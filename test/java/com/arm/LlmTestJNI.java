@@ -27,6 +27,7 @@ public class LlmTestJNI {
     private static int numThreads = 4;
     private static String modelTag = "";
     private static String userTag = "";
+    private static String endTag = "";
     private static String modelPath = "";
     private static String llmPrefix = "";
     private static List<String> stopWords = new ArrayList<String>();
@@ -80,6 +81,7 @@ public class LlmTestJNI {
         loadVariables(configFilePath);
         modelTag = variables.get("modelTag");
         userTag = variables.getOrDefault("userTag","");
+        endTag = variables.getOrDefault("endTag", "");
         llmPrefix = variables.get("llmPrefix");
         modelPath = modelDir + "/" + variables.get("llmModelName");
         loadVariables(userConfigFilePath);
@@ -95,7 +97,7 @@ public class LlmTestJNI {
 
     @Test
     public void testConfigLoading() {
-        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix,userTag,numThreads);
+        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix, userTag, endTag, numThreads);
         assertTrue("Model tag is not empty", !llmConfig.getModelTag().isEmpty());
         assertTrue("LLM prefix is not empty", !llmConfig.getLlmPrefix().isEmpty());
         assertTrue("Stop words list is not empty", !llmConfig.getStopWords().isEmpty());
@@ -103,11 +105,11 @@ public class LlmTestJNI {
 
     @Test
     public void testLlmPrefixSetting() {
-        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix,userTag);
+        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix, userTag, endTag, numThreads);
         Llm llm = new Llm();
         llm.llmInit(llmConfig);
 
-        String newModelTag = ("Ferdia");
+        String newModelTag = ("Ferdia:");
         String newPrefix = "Transcript of a dialog, where the User interacts with an AI Assistant named " + newModelTag +
                 ". " + newModelTag +
                 " is helpful, polite, honest, good at writing and answers honestly with a maximum of two sentences. User:";
@@ -123,27 +125,26 @@ public class LlmTestJNI {
 
     @Test
     public void testInferenceWithContextReset() {
-       LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix,userTag,numThreads);
-       Llm llm = new Llm();
-       llm.llmInit(llmConfig);
+        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix, userTag, endTag, numThreads);
+        Llm llm = new Llm();
+        llm.llmInit(llmConfig);
 
-       String question1 = "What is the capital of the country, Morocco?";
-       String response1 = llm.send(question1);
-       checkLlmMatch(response1, "Rabat", true);
+        String question1 = "What is the capital of the country, Morocco?";
+        String response1 = llm.send(question1);
+        checkLlmMatch(response1, "Rabat", true);
 
-       // Resetting context should cause model to forget what country is being referred to
-       llm.resetContext();
+        // Resetting context should cause model to forget what country is being referred to
+        llm.resetContext();
 
-       String question2 = "What languages do they speak there?";
-       String response2 = llm.send(question2);
-       checkLlmMatch(response2, "Arabic", false);
-
-       llm.freeModel();
+        String question2 = "What languages do they speak there?";
+        String response2 = llm.send(question2);
+        checkLlmMatch(response2, "Arabic", false);
+        llm.freeModel();
     }
 
     @Test
     public void testInferenceWithoutContextReset() {
-        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix,userTag,numThreads);
+        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix, userTag, endTag, numThreads);
         Llm llm = new Llm();
         llm.llmInit(llmConfig);
 
@@ -154,13 +155,12 @@ public class LlmTestJNI {
         String question2 = "What languages do they speak there?";
         String response2 = llm.send(question2);
         checkLlmMatch(response2, "Arabic", true);
-
         llm.freeModel();
     }
 
     @Test
     public void testInferenceHandlesEmptyQuestion() {
-        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix,userTag,numThreads);
+        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix, userTag, endTag, numThreads);
         Llm llm = new Llm();
         llm.llmInit(llmConfig);
 
@@ -177,14 +177,13 @@ public class LlmTestJNI {
         String question2 = "What languages do they speak there?";
         String response2 = llm.send(question2);
         checkLlmMatch(response2, "Arabic", true);
-
         llm.freeModel();
     }
 
     @Test
     public void testMangoSubtractionLongConversation() {
 
-        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix,userTag,numThreads);
+        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix, userTag, endTag, numThreads);
         Llm llm = new Llm();
         llm.llmInit(llmConfig);
 
@@ -195,14 +194,19 @@ public class LlmTestJNI {
         // Set the initial ground truth in the conversation.
         String initialContext = "There are " + originalMangoes + " mangoes in a basket.";
         String initResponse = llm.send(initialContext);
-        String originalQuery = "How many mangoes did we start with? ";
-        String subtractQuery = "Subtract 1 mango. How many mangoes are left now? ";
+        String originalQuery = "How many mangoes did we start with?";
+        String subtractQuery = "Remove 1 mango from the basket. How many mangoes left in the basket now?";
 
         // **Assert that the model acknowledges the initial count of mangoes.**
         checkLlmMatch(initResponse, String.valueOf(originalMangoes), true);
 
         // Loop to subtract 1 mango each iteration until reaching 0.
         for (int i = 1; i < originalMangoes; i++) {
+
+            // Modify the query during the conversation
+            if (i == 2) {
+                subtractQuery = "Good, remove 1 mango again from the basket. How many mangoes left in the basket now?";
+            }
 
             // Query to subtract one mango
             String subtractionResponse = llm.send(subtractQuery);
@@ -219,6 +223,7 @@ public class LlmTestJNI {
         }
 
         String postResetResponse = llm.send(originalQuery);
+
         checkLlmMatch(postResetResponse, String.valueOf(originalMangoes), false);
         llm.freeModel();
     }
@@ -232,7 +237,7 @@ public class LlmTestJNI {
             throw new RuntimeException("System properties for model_dir or config_file are not set!");
         }
 
-        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix,userTag,numThreads);
+        LlmConfig llmConfig = new LlmConfig(modelTag, stopWords, modelPath, llmPrefix, userTag, endTag, numThreads);
         Llm llm = new Llm();
         llm.llmInit(llmConfig);
 
@@ -257,8 +262,6 @@ public class LlmTestJNI {
 
         checkLlmMatch(response4, "Arabic", true);
         checkLlmMatch(response4, "French", true);
-
-        // Free model after use
         llm.freeModel();
     }
 }

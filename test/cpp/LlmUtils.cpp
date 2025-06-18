@@ -79,6 +79,10 @@ LlmConfig GetConfig(std::unordered_map<std::string, std::string> config,
         throw std::runtime_error("Missing required parameter: modelPath");
     if (config.find("modelTag") == config.end())
         throw std::runtime_error("Missing required parameter: modelTag");
+    if (config.find("userTag") == config.end())
+        throw std::runtime_error("Missing required parameter: userTag");
+    if (config.find("endTag") == config.end())
+        throw std::runtime_error("Missing required parameter: endTag");
     if (config.find("llmPrefix") == config.end())
         throw std::runtime_error("Missing required parameter: llmPrefix");
 
@@ -90,6 +94,8 @@ LlmConfig GetConfig(std::unordered_map<std::string, std::string> config,
         throw std::runtime_error("Missing required parameter: stopWords");
 
     return LlmConfig(config.at("modelTag"),
+                     config.at("userTag"),
+                     config.at("endTag"),
                      config.at("modelPath"),
                      config.at("llmPrefix"),
                      userConfig.at("numThreads"),

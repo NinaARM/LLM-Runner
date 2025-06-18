@@ -11,6 +11,7 @@ import urllib.request
 import logging
 import sys
 from argparse import ArgumentParser
+
 def download_file(url: str, dest: Path) -> None:
     """
     Download a file
@@ -59,12 +60,20 @@ def download_resources(resources_file: Path, download_dir: Path) -> None:
         for resource_type in resource_list:
             resource_dir = Path(download_dir / resource_type)
             resource_dir.mkdir(exist_ok=True)
-            for resource_data in resource_list[resource_type]:
-                logging.info(f'Name:    {resource_data["name"]}')
-                logging.info(f'Purpose: {resource_data["purpose"]}')
-                logging.info(f'Dest:    {resource_data["destination"]}')
-                logging.info(f'URL:     {resource_data["url"]}')
-                logging.info(f'SHA256:  {resource_data["sha256sum"]}')
+
+            if resource_type == "models":
+                resources = resource_list[resource_type][llm_framework]
+                model_dir = Path(resource_dir / llm_framework)
+                model_dir.mkdir(exist_ok=True)
+            else:
+                resources = resource_list[resource_type]
+
+            for resource_data in resources:
+                logging.info(f'Name:      {resource_data["name"]}')
+                logging.info(f'Purpose:   {resource_data["purpose"]}')
+                logging.info(f'Dest:      {resource_data["destination"]}')
+                logging.info(f'URL:       {resource_data["url"]}')
+                logging.info(f'SHA256:    {resource_data["sha256sum"]}')
 
                 url = resource_data['url']
                 dest = resource_dir / resource_data['destination']
@@ -83,6 +92,7 @@ def download_resources(resources_file: Path, download_dir: Path) -> None:
 current_file_dir = Path(__file__).parent.resolve()
 default_requirements_file = current_file_dir / 'requirements.json'
 default_download_location = current_file_dir / '..' / '..' / 'resources_downloaded'
+default_llm_framework = "llama.cpp"
 
 
 if __name__ == "__main__":
@@ -98,10 +108,15 @@ if __name__ == "__main__":
         "--download-dir",
         help="Path to where resources should be downloaded.",
         default=default_download_location)
+    parser.add_argument(
+        "--llm-framework",
+        help="LLM framework from which the model will be downloaded.",
+        default=default_llm_framework)
 
     args = parser.parse_args()
     req_file = Path(args.requirements_file)
     download_dir = Path(args.download_dir)
+    llm_framework = args.llm_framework
 
     if not req_file.exists():
         raise FileNotFoundError(f'{req_file} does not exist')

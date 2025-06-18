@@ -25,8 +25,10 @@ add_executable(llm-cpp-tests
     ${CMAKE_CURRENT_SOURCE_DIR}/cpp/LlmUtils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/cpp/LlmTest.cpp)
 
-if (${LLM_DEP_NAME} STREQUAL "llama.cpp")
+if (${LLM_FRAMEWORK} STREQUAL "llama.cpp")
     set(CONFIG_FILE_NAME "llamaConfig.txt" CACHE STRING "Path to the Llama config file")
+elseif (${LLM_FRAMEWORK} STREQUAL "onnxruntime-genai")
+    set(CONFIG_FILE_NAME "onnxrtConfig.txt" CACHE STRING "Path to the ONNX Runtime GenAI config file")
 endif ()
 
 

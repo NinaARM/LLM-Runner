@@ -6,14 +6,13 @@
 
 include_guard(GLOBAL)
 
-set(LLM_DEP_NAME "llama.cpp" CACHE STRING
+set(LLM_FRAMEWORK "llama.cpp" CACHE STRING
     "Dependency name to configure the project for")
 
 # Available options:
-set(CACHE LLM_DEP_NAME PROPERTY STRINGS
+set(CACHE LLM_FRAMEWORK PROPERTY STRINGS
     "llama.cpp"
-    "mediapipe"
-    "executorch")
+    "onnxruntime-genai")
 
 set(DOWNLOADS_DIR        ${CMAKE_CURRENT_SOURCE_DIR}/resources_downloaded
     CACHE STRING

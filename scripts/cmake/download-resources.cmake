@@ -45,6 +45,8 @@ execute_process(
         ${CMAKE_CURRENT_LIST_DIR}/../py/requirements.json
         --download-dir
         ${DOWNLOADS_DIR}
+        --llm-framework
+        ${LLM_FRAMEWORK}
     RESULT_VARIABLE return_code)
 
 # Release the lock:

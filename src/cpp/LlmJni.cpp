@@ -8,7 +8,7 @@
 
 #include <jni.h>
 
-static std::unique_ptr<LLM> llm{nullptr};
+static std::unique_ptr<LLM> llm = std::make_unique<LLM>();
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,16 +17,22 @@ extern "C" {
 JNIEXPORT jlong JNICALL Java_com_arm_Llm_createLlmConfig(JNIEnv* env,
                                                          jobject /* this */,
                                                          jstring jModelTag,
+                                                         jstring jUserTag,
+                                                         jstring jEndTag,
                                                          jstring jModelPath,
                                                          jstring jLlmPrefix,
                                                          jint jNumThreads,
                                                          jint jBatchSize)
 {
     const char* modelTag  = env->GetStringUTFChars(jModelTag, nullptr);
+    const char* userTag   = env->GetStringUTFChars(jUserTag, nullptr);
+    const char* endTag    = env->GetStringUTFChars(jEndTag, nullptr);
     const char* modelPath = env->GetStringUTFChars(jModelPath, nullptr);
     const char* llmPrefix = env->GetStringUTFChars(jLlmPrefix, nullptr);
 
     auto* config = new LlmConfig(std::string(modelTag),
+                                 std::string(userTag),
+                                 std::string(endTag),
                                  std::string(modelPath),
                                  std::string(llmPrefix),
                                  static_cast<int>(jNumThreads),
@@ -34,6 +40,8 @@ JNIEXPORT jlong JNICALL Java_com_arm_Llm_createLlmConfig(JNIEnv* env,
 
     // Clean up
     env->ReleaseStringUTFChars(jModelTag, modelTag);
+    env->ReleaseStringUTFChars(jUserTag, userTag);
+    env->ReleaseStringUTFChars(jEndTag, endTag);
     env->ReleaseStringUTFChars(jModelPath, modelPath);
     env->ReleaseStringUTFChars(jLlmPrefix, llmPrefix);
 
@@ -43,7 +51,6 @@ JNIEXPORT jlong JNICALL Java_com_arm_Llm_createLlmConfig(JNIEnv* env,
 JNIEXPORT jlong JNICALL Java_com_arm_Llm_loadModel(JNIEnv* env, jobject, jlong pconfig)
 {
     auto config = reinterpret_cast<LlmConfig*>(pconfig);
-    llm         = std::make_unique<LLM>();
     llm->LlmInit(*config);
     return 0;
 }
@@ -74,7 +81,6 @@ JNIEXPORT jfloat JNICALL Java_com_arm_Llm_getEncodeRate(JNIEnv* env, jobject)
 
 JNIEXPORT jfloat JNICALL Java_com_arm_Llm_getDecodeRate(JNIEnv* env, jobject)
 {
-
     float result = llm->GetDecodeTimings();
     return result;
 }
@@ -83,19 +89,28 @@ JNIEXPORT void JNICALL Java_com_arm_Llm_resetTimings(JNIEnv* env, jobject)
 {
     llm->ResetTimings();
 }
+
 JNIEXPORT jsize JNICALL Java_com_arm_Llm_getChatProgress(JNIEnv* env, jobject)
 {
     return llm->GetChatProgress();
 }
+
 JNIEXPORT void JNICALL Java_com_arm_Llm_resetContext(JNIEnv* env, jobject)
 {
     llm->ResetContext();
 }
+
 JNIEXPORT jstring JNICALL Java_com_arm_Llm_benchModel(
     JNIEnv* env, jobject, jint nPrompts, jint nEvalPrompts, jint nMaxSeq, jint nRep)
 {
     std::string result = llm->BenchModel(nPrompts, nEvalPrompts, nMaxSeq, nRep);
     return env->NewStringUTF(result.c_str());
+}
+
+JNIEXPORT jstring JNICALL Java_com_arm_Llm_getFrameworkType(JNIEnv* env, jobject)
+{
+    std::string frameworkType = llm->GetFrameworkType();
+    return env->NewStringUTF(frameworkType.c_str());
 }
 
 #ifdef __cplusplus
