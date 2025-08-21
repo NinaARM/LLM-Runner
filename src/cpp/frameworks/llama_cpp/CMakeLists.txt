@@ -25,7 +25,7 @@ set(LLAMA_GIT_URL "https://github.com/ggerganov/llama.cpp.git"
         CACHE STRING
         "Git URL for llama.cpp repo")
 
-set(LLAMA_GIT_SHA "a4090d1"
+set(LLAMA_GIT_SHA "b6218"
         CACHE STRING
         "Git commit SHA for llama.cpp repo")
 

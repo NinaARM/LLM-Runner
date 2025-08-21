@@ -42,7 +42,7 @@ set(ONNX_BUILD_SHARED_LIBS                        OFF)
 set(ONNXRUNTIME_GIT_URL   "https://github.com/microsoft/onnxruntime.git"
         CACHE STRING "Git URL for onnxruntime repo")
 
-set(ONNXRUNTIME_GIT_TAG   "v1.22.1"
+set(ONNXRUNTIME_GIT_TAG   "v1.22.2"
         CACHE STRING "Path where onnxruntime repo should be cloned")
 
 set(ONNXRUNTIME_SRC_DIR   "${CMAKE_BINARY_DIR}/onnxruntime"
@@ -113,8 +113,8 @@ set(ONNXRT_GENAI_SRC_DIR "${CMAKE_BINARY_DIR}/onnxruntime-genai"
 set(ONNXRT_GENAI_GIT_URL "https://github.com/microsoft/onnxruntime-genai.git"
         CACHE STRING "Git URL for onnxruntime-genai repo")
 
-# Latest stable tag (July 2025)
-set(ONNXRT_GENAI_GIT_TAG "v0.8.3"
+# Latest stable tag (August 2025)
+set(ONNXRT_GENAI_GIT_TAG "v0.9.0"
         CACHE STRING "Git tag / commit SHA for onnxruntime-genai repo")
 
 # --------------------------------------------------------------------

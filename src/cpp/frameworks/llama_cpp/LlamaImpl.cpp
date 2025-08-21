@@ -137,14 +137,14 @@ std::string LLM::LLMImpl::SystemInfo()
 
 void LLM::LLMImpl::KVCacheClear()
 {
-    llama_kv_self_clear(this->m_llmContext);
+    llama_memory_clear(llama_get_memory(this->m_llmContext), true);
 }
 
 void LLM::LLMImpl::KVCacheSeqRm(int32_t p0, int p1)
 {
     // setting sequence ID to negative to match any sequence
     int seqId = -1;
-    llama_kv_self_seq_rm(this->m_llmContext, seqId, p0, p1);
+    llama_memory_seq_rm(llama_get_memory(this->m_llmContext), seqId, p0, p1);
 }
 
 int32_t LLM::LLMImpl::GetInitialPromptLength(const char* text,
@@ -313,7 +313,7 @@ std::string LLM::LLMImpl::BenchModel(int& prompts, int& eval_prompts, int& n_max
         }
 
         this->m_llmBatch.logits[this->m_llmBatch.n_tokens - 1] = true;
-        llama_kv_self_clear(this->m_llmContext);
+        llama_memory_clear(llama_get_memory(this->m_llmContext), true);
 
         const auto t_prompts_start = ggml_time_us();
         if (llama_decode(this->m_llmContext, this->m_llmBatch) != 0) {
@@ -325,7 +325,7 @@ std::string LLM::LLMImpl::BenchModel(int& prompts, int& eval_prompts, int& n_max
 
         LOG_INF("Benchmark text generation (tg)\n");
 
-        llama_kv_self_clear(this->m_llmContext);
+        llama_memory_clear(llama_get_memory(this->m_llmContext), true);
         const auto t_eval_prompts_start = ggml_time_us();
         for (i = 0; i < eval_prompts; i++) {
             common_batch_clear(this->m_llmBatch);
@@ -341,7 +341,7 @@ std::string LLM::LLMImpl::BenchModel(int& prompts, int& eval_prompts, int& n_max
 
         const auto t_eval_prompts_end = ggml_time_us();
 
-        llama_kv_self_clear(this->m_llmContext);
+        llama_memory_clear(llama_get_memory(this->m_llmContext), true);
 
         const auto t_prompts      = static_cast<double>(t_prompts_end - t_prompts_start) / 1000000.0;
         const auto t_eval_prompts = static_cast<double>(t_eval_prompts_end - t_eval_prompts_start) / 1000000.0;
