@@ -42,6 +42,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # Set position independent code enabled
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Make coverage option available and wire flags if enabled
+include(enable-coverage)
+
 # Add default configuration options users can set from command line.
 include(configuration-options)
 

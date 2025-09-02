@@ -4,3 +4,5 @@ resources_downloaded/
 Testing/
 cmake-build-*/
 build-*/
+# Ignore coverage build directory
+build_coverage/
