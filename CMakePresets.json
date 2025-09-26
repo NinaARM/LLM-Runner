@@ -125,9 +125,7 @@
       ],
       "cacheVariables": {
         "ANDROID_ABI":        { "type": "STRING", "value": "arm64-v8a" },
-        "ANDROID_PLATFORM":   { "type": "STRING", "value": "android-33" },
-        "CMAKE_C_FLAGS":      { "type": "STRING", "value": "-march=armv8.2a+dotprod+i8mm" },
-        "CMAKE_CXX_FLAGS":    { "type": "STRING", "value": "-march=armv8.2a+dotprod+i8mm" }
+        "ANDROID_PLATFORM":   { "type": "STRING", "value": "android-33" }
       }
     },
     {

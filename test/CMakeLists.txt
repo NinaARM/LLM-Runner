@@ -11,9 +11,10 @@ project(llm-tests
 
 set(CATCH_DIR "${CMAKE_CURRENT_BINARY_DIR}" CACHE STRING "Catch2 location")
 
-set(TEST_MODELS_DIR ${DOWNLOADS_DIR}/models CACHE STRING "Directory with required model resources")
-set(TEST_RESOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test_resources CACHE STRING "Directory with required test resources")
-set(TEST_UTILS_DIR  ${DOWNLOADS_DIR}/test_utils CACHE STRING "Directory with required test utilities jar resources")
+set(TEST_MODELS_DIR ${DOWNLOADS_DIR}/models)
+set(TEST_RESOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test_resources)
+set(TEST_UTILS_DIR  ${DOWNLOADS_DIR}/test_utils)
+set(TEST_MODELS_DIR  ${DOWNLOADS_DIR}/models)
 
 
 if (NOT TARGET arm-llm-cpp)
@@ -36,6 +37,26 @@ include(find-catch)
 # Add test to CTest for running it automatically
 enable_testing()
 
+set(TEST_TARGET llm-cpp-tests)
+add_executable(${TEST_TARGET}
+        ${CMAKE_CURRENT_SOURCE_DIR}/cpp/LlmTest.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/cpp/LlmImplFactoryTest.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/cpp/LlmConfigTest.cpp)
+
+target_compile_definitions(${TEST_TARGET}
+        PUBLIC
+        TEST_MODELS_DIR="${TEST_MODELS_DIR}"
+        TEST_RESOURCE_DIR="${TEST_RESOURCE_DIR}")
+
+# Android specific definition for Catch
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+    target_compile_definitions(${TEST_TARGET} PRIVATE
+            "CATCH_CONFIG_NO_ANDROID_LOGWRITE")
+endif()
+
+# Assert dependency on the actual C++ interface or library.
+target_link_libraries(${TEST_TARGET} PUBLIC arm-llm-cpp Catch2::Catch2)
+
 foreach(CFG_FILE ${CONFIG_FILE_NAME})
 
     message(STATUS "Adding cpp test for ${CFG_FILE}")
@@ -44,44 +65,18 @@ foreach(CFG_FILE ${CONFIG_FILE_NAME})
     # from.
     string(TOLOWER "${CFG_FILE}" CFG_FILE_EXT)
     string(MAKE_C_IDENTIFIER "${CFG_FILE_EXT}" CFG_FILE_EXT)
-    set(TEST_TARGET llm-cpp-tests-${CFG_FILE_EXT})
 
     set(CONFIG_FILE_SOURCE "${CMAKE_SOURCE_DIR}/model_configuration_files/${CFG_FILE}")
-    set(CONFIG_FILE_DEST "${CMAKE_BINARY_DIR}/${CFG_FILE}")
 
     if(NOT EXISTS ${CONFIG_FILE_SOURCE})
         message(FATAL_ERROR "Configuration file not found: ${CONFIG_FILE_SOURCE}")
     endif()
 
-    configure_file(${CONFIG_FILE_SOURCE} ${CONFIG_FILE_DEST} COPYONLY)
-
-    add_executable(${TEST_TARGET}
-        ${CMAKE_CURRENT_SOURCE_DIR}/cpp/LlmTest.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/cpp/LlmImplFactoryTest.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/cpp/LlmConfigTest.cpp)
-
-    target_compile_definitions(${TEST_TARGET}
-            PUBLIC
-            TEST_MODELS_DIR="${TEST_MODELS_DIR}"
-            TEST_RESOURCE_DIR="${TEST_RESOURCE_DIR}")
-
-    # Android specific definition for Catch
-    if (${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-        target_compile_definitions(${TEST_TARGET} PRIVATE
-                "CATCH_CONFIG_NO_ANDROID_LOGWRITE")
-    endif()
-
-    target_compile_definitions(${TEST_TARGET}
-            PUBLIC CONFIG_FILE_PATH="${CONFIG_FILE_DEST}")
-
-    # Assert dependency on the actual C++ interface or library.
-    target_link_libraries(${TEST_TARGET} PUBLIC arm-llm-cpp)
-
-    # Include Catch header directory.
-    target_include_directories(${TEST_TARGET} PUBLIC ${CATCH_DIR})
-
     # Add test to CTest for running it automatically
-    add_test(NAME llm-cpp-ctest-${CFG_FILE_EXT} COMMAND ${TEST_TARGET})
+    add_test(NAME llm-cpp-ctest-${CFG_FILE_EXT} COMMAND ${TEST_TARGET}
+            --config ${CONFIG_FILE_SOURCE}
+            --model-root ${TEST_MODELS_DIR}
+            --backend-shared-lib-dir "${CMAKE_BINARY_DIR}/bin")
 endforeach()
 
 # If JNI libs are being built, add tests for these here.
@@ -134,13 +129,13 @@ if(TARGET arm-llm-jni)
             COMMAND
             ${Java_JAVA_EXECUTABLE}
             -Djava.library.path=${_jniLibPath}
+            -Dbackend.shared.lib.dir=${CMAKE_BINARY_DIR}/bin
             -Dmodel_dir=${TEST_MODELS_DIR}
-            -Dconfig_file=${CONFIG_FILE_DEST}
+            -Dconfig_file=${CONFIG_FILE_SOURCE}
             -Dtest_image=${TEST_RESOURCE_DIR}
             -Duser_config_file=${USER_CONFIG_FILE_DEST}
             -cp ${_jarDependenciesTests}:${_jarFile}
             org.junit.runner.JUnitCore
             com.arm.LlmTestJNI)
     endforeach()
-
 endif()

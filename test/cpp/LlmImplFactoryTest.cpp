@@ -4,15 +4,18 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "catch.hpp"
 
 #include "LlmImpl.hpp"
 #include <sstream>
 #include <list>
 
+#include "catch2/catch_test_macros.hpp"
+
 /**
  * Simple test to ensure we pick up the correct LLMImpl based on the modalities in the config
  */
+
+
 TEST_CASE("Test Query")
 {
     LlmConfig config{};

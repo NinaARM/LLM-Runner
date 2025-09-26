@@ -175,7 +175,7 @@ void LLM::LLMImpl::FreeModel()
     this->m_llmInitialized = false;
 }
 
-void LLM::LLMImpl::LlmInit(const LlmConfig& config)
+void LLM::LLMImpl::LlmInit(const LlmConfig& config, std::string sharedLibraryPath = "")
 {
     try {
         this->m_config            = config;

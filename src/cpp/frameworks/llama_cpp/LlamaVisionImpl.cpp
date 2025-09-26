@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include "ggml-backend.h"
 
 void LlamaVisionImpl::NewSampler() {
     // Set deterministic sampling parameters
@@ -48,7 +49,11 @@ void LlamaVisionImpl::FreeLlm() {
     this->m_llmInitialized = false;
 }
 
-void LlamaVisionImpl::LlmInit(const LlmConfig& config) {
+
+void LlamaVisionImpl::LlmInit(const LlmConfig& config, std::string sharedLibraryPath) {
+
+    ggml_backend_load_all_from_path(sharedLibraryPath.c_str());
+
     if (config.GetNumThreads() <= 0) {
         throw std::invalid_argument("NumThreads must be > 0");
     }

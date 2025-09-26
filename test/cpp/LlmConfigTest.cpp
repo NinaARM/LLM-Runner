@@ -4,16 +4,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "catch.hpp"
 
 #include "LlmImpl.hpp"
 #include <sstream>
 #include <list>
 #include <cstring>
 
+#include "catch2/catch_test_macros.hpp"
+
 /**
  * Simple Test file for testing config related cases
  */
+
+
 TEST_CASE("Test Multi-Modal config, with missing projection model")
 {
 

@@ -25,12 +25,14 @@ set(LLAMA_GIT_URL "https://github.com/ggerganov/llama.cpp.git"
         CACHE STRING
         "Git URL for llama.cpp repo")
 
-set(LLAMA_GIT_SHA "b6218"
+set(LLAMA_GIT_SHA "4258e0cfe72c72ad2787be1e9f93253e89219455"
         CACHE STRING
         "Git commit SHA for llama.cpp repo")
 
+
 set(LLAMA_BUILD_TOOLS    ON)
 set(LLAMA_CURL           OFF CACHE BOOL "llama: use libcurl to download model from an URL")
+
 
 # KleidiAI configuration
 if(DEFINED GGML_CPU_KLEIDIAI)
@@ -55,6 +57,24 @@ FetchContent_MakeAvailable(llama-cpp)
 # Build llama-bench binary
 if(BUILD_BENCHMARK)
     set_target_properties(llama-bench PROPERTIES EXCLUDE_FROM_ALL OFF)
+endif()
+
+# For Android we build the variant arch backend shared libraries
+if(DEFINED ANDROID_ABI)
+
+    # The following block of code ensures that BUILD_SHARED_LIBS defaults to ON for android builds.
+    # If the BUILD_SHARED_LIBS is OFF via the CLI / Cache the build failed with an error message
+    option(BUILD_SHARED_LIBS "BUILD_SHARED_LIBS is required for android builds" ON)
+    if(NOT BUILD_SHARED_LIBS)
+        message(FATAL_ERROR
+                "BUILD_SHARED_LIBS must be ON for android. You passed -DBUILD_SHARED_LIBS=OFF or it is cached as OFF.\n"
+                "Fix by re-configuring with -DBUILD_SHARED_LIBS=ON and/or deleting entry from cache.")
+    endif()
+
+    set(GGML_BACKEND_DL ON)
+    set(GGML_CPU_ALL_VARIANTS ON)
+
+    include(llama-cpp-workaround)
 endif()
 
 # Check internally defined dependency targets are visible

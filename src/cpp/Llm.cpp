@@ -18,7 +18,7 @@ LLM::~LLM() {
     this->FreeLlm();
 }
 
-void LLM::LlmInit(const LlmConfig &llmConfig)
+void LLM::LlmInit(const LlmConfig &llmConfig, std::string sharedLibraryPath)
 {
     this->m_config = llmConfig;
     this->m_maxStopWordLength = 0;
@@ -36,7 +36,7 @@ void LLM::LlmInit(const LlmConfig &llmConfig)
     if (this->m_maxStopWordLength < 1) {
         this->m_maxStopWordLength = 1;
     }
-    this->m_impl->LlmInit(llmConfig);
+    this->m_impl->LlmInit(llmConfig, sharedLibraryPath);
 }
 
 void LLM::FreeLlm()

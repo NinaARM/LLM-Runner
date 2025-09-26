@@ -26,8 +26,9 @@ public:
     /**
      * Method to initialize a ONNX model
      * @param config Configuration class with model's parameter and user defined parameters
+     * @param sharedLibraryPath path to location of shared libs
      */
-    void LlmInit(const LlmConfig& config);
+    void LlmInit(const LlmConfig& config, std::string sharedLibraryPath);
 
     /**
      * Method to free all allocations pertaining to ONNX model

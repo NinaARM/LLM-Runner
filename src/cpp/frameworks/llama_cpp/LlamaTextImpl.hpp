@@ -27,8 +27,9 @@ public:
     /**
      * @brief Method to initialize a llama_model
      * @param config Configuration class with model's parameter and user defined parameters
+     * @param sharedLibraryPath path to location of shared libs
      */
-    virtual void LlmInit(const LlmConfig& config);
+    virtual void LlmInit(const LlmConfig& config, std::string sharedLibraryPath = "");
 
     /**
      * @brief Method to free all allocations pertaining to llama model

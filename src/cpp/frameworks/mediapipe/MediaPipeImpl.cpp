@@ -92,7 +92,7 @@ void LLM::LLMImpl::LoadSession()
     }
 }
 
-void LLM::LLMImpl::LlmInit(const LlmConfig& config)
+void LLM::LLMImpl::LlmInit(const LlmConfig& config, std::string sharedLibraryPath)
 {
     try {
         this->m_config = config;

@@ -206,8 +206,7 @@ cmake -B build \
     -DCMAKE_TOOLCHAIN_FILE=${NDK_PATH}/build/cmake/android.toolchain.cmake \
     -DANDROID_ABI=arm64-v8a \
     -DANDROID_PLATFORM=android-33 \
-    -DCMAKE_C_FLAGS=-march=armv8.2-a+i8mm+dotprod \
-    -DCMAKE_CXX_FLAGS=-march=armv8.2-a+i8mm+dotprod
+    -DBUILD_SHARED_LIBS=ON
 
 cmake --build ./build
 ```
@@ -263,6 +262,9 @@ GGML_KLEIDIAI_SME=0 ./build/bin/llama-cli -m resources_downloaded/models/llama.c
 >    -DCMAKE_EXE_LINKER_FLAGS="-static"   \
 >    -DGGML_OPENMP=OFF
 > ```
+
+> **NOTE**: Currently it is recommended for aarch64 Linux builds that the GGML_CPU_ARM_ARCH flag be set for the target system. 
+> Not setting the flag may result in build issues and / or runtime errors.
 
 #### Native host build
 

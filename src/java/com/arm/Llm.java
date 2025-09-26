@@ -37,8 +37,9 @@ public class Llm extends SubmissionPublisher<String> {
      * Create LLM native instance from config.
      *
      * @param configPathStr Path to config.json file.
+     * @param sharedLibraryPath Path to shared library folder to load optional shared libs
      */
-    public native void llmInit(String configPathStr);
+    public native void llmInit(String configPathStr, String sharedLibraryPath);
 
     /**
      * @return Checks if the LLM impl supports Image input.

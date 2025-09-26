@@ -14,9 +14,10 @@ static std::unique_ptr<LLM> llm;
 extern "C" {
 #endif
 
+
 JNIEXPORT void JNICALL Java_com_arm_Llm_llmInit(JNIEnv* env,
                                                 jobject /* this */,
-                                                jstring modelJsonStr)
+                                                jstring modelJsonStr, jstring sharedLibraryPath)
 {
 
     if (modelJsonStr == nullptr) {
@@ -31,10 +32,19 @@ JNIEXPORT void JNICALL Java_com_arm_Llm_llmInit(JNIEnv* env,
     std::string jsonStr(modelCStr);
     env->ReleaseStringUTFChars(modelJsonStr, modelCStr);
 
+    if (sharedLibraryPath == nullptr) {
+        std::cerr << "sharedLibraryPath is null" << std::endl;
+    }
+
+    auto sharedLibraryPathNative = env->GetStringUTFChars(sharedLibraryPath, nullptr);
+    if (sharedLibraryPathNative == nullptr) {
+        std::cerr << "GetStringUTFChars returned null" << std::endl;
+    }
+
     try {
         LlmConfig config = LlmConfig(jsonStr);
         llm = std::make_unique<LLM>(config);
-        llm->LlmInit(config);
+        llm->LlmInit(config, sharedLibraryPathNative);
     } catch (const std::exception& e) {
         std::cerr << "Failed to create Llm from config string: " << e.what() << std::endl;
     }
@@ -113,4 +123,3 @@ Java_com_arm_Llm_supportsImageInput(JNIEnv *env, jobject thiz) {
 #ifdef __cplusplus
 }
 #endif
-

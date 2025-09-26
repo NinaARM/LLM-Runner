@@ -5,29 +5,91 @@
 //
 #define CATCH_CONFIG_MAIN
 
-#include "catch.hpp"
 
 #include "LlmImpl.hpp"
 #include <sstream>
 #include <list>
+#include <iostream>
+#include <fstream>
+#include <array>
+#include <string>
+
+#include "catch2/catch_test_macros.hpp"
+#include "catch2/catch_session.hpp"
+
+
+#if defined(DEPRECATED)
+#undef DEPRECATED
+#endif /* defined(DEPRECATED) */
+
+
+static std::string s_configFilePath{""};
+static std::string s_modelRootDir{""};
+static std::string s_backendSharedLibraryDir{""};
+
+static int maxTokenRetrievalAttempts = 10000;
+
+using namespace Catch::Clara;
+
+int main(int argc, char* argv[])
+{
+    Catch::Session session;
+
+    std::string configFilePath;
+    std::string modelsRootDir;
+    std::string backendSharedLibraryDir;
+
+    auto cli = session.cli() |
+                Opt(configFilePath, "configFile")
+                ["--config"]
+                ("Config (json) file path") |
+                Opt(modelsRootDir, "modelRootDir")
+                ["--model-root"]
+                ("Root directory to look for models") |
+                Opt(backendSharedLibraryDir, "sharedLibraryDir")
+                ["--backend-shared-lib-dir"]
+                        ("Backend shared Library directory");
+
+    session.cli(cli);
+
+    if (0 != session.applyCommandLine(argc, argv)) {
+        std::cerr << "Failed to parse command line options\n";
+    }
+
+    std::cout << "Config file: " << configFilePath;
+    std::cout << "Model root directory :" << modelsRootDir.c_str();
+    std::cout << "Backend shared Library directory :" << backendSharedLibraryDir.c_str();
+
+    s_configFilePath = configFilePath;
+    s_modelRootDir = modelsRootDir;
+    s_backendSharedLibraryDir = backendSharedLibraryDir;
+
+    return session.run();
+}
 
 // Function to create the configuration file from CONFIG_FILE_PATH
-void SetupTestConfig(LlmConfig *configTest)
+LlmConfig SetupTestConfig()
 {
-    std::string configFilePath     = CONFIG_FILE_PATH;
-    std::ifstream configFile(configFilePath);
+    /* Ensure the config file and model root directories
+    * have been provided. */
+    REQUIRE(!s_configFilePath.empty());
+    REQUIRE(!s_modelRootDir.empty());
+
+    std::ifstream configFile(s_configFilePath);
     std::stringstream buffer;
     buffer << configFile.rdbuf();  // Read file into stringstream
     std::string jsonContent = buffer.str();
-    *configTest = LlmConfig(jsonContent);
-    std::string testModelsDir = TEST_MODELS_DIR;
-    std::string modelPath     = testModelsDir + "/" + configTest->GetModelPath();
-    configTest->SetModelPath(modelPath);
+
+    LlmConfig configTest = LlmConfig(jsonContent);
+    std::string modelPath = s_modelRootDir + "/" + configTest.GetModelPath();
+    configTest.SetModelPath(modelPath);
+
     // Multimodal only
-    if (configTest->GetInputModalities().size() == 2) {
-        std::string projModelPath =  testModelsDir + "/" + configTest->GetMMPROJModelPath();
-        configTest->SetMMPROJModelPath(projModelPath);
+    if (configTest.GetInputModalities().size() == 2) {
+        std::string projModelPath =  s_modelRootDir + "/" + configTest.GetMMPROJModelPath();
+        configTest.SetMMPROJModelPath(projModelPath);
     }
+    return configTest;
 }
 
 /**
@@ -36,22 +98,21 @@ void SetupTestConfig(LlmConfig *configTest)
 sh */
 TEST_CASE("Test Llm-Wrapper class")
 {
-    LlmConfig configTest{};
-    SetupTestConfig(&configTest);
+    auto configTest = SetupTestConfig();
     LLM llm(configTest);
     std::stringstream stopWordsStream;
     std::list<std::string> stopWords;
     std::string question         = "What is the capital of France?" ;
 
+    int circuitBreaker = 0;
+    
     // Multimodal tests only
     if (configTest.GetInputModalities().size() == 2)
     {
-        /**
-         * Validate the vision path can describe objects in images.
-         */
+         // Validate the vision path can describe objects in images.
         SECTION("Describe Image")
         {
-            llm.LlmInit(configTest);
+            llm.LlmInit(configTest, s_backendSharedLibraryDir);
             struct Case {
                 const char* file;
                 const char* expect;
@@ -72,6 +133,10 @@ TEST_CASE("Test Llm-Wrapper class")
                     if (s==llm.endToken)
                         break;
                     response += s;
+
+                    if (circuitBreaker++ > maxTokenRetrievalAttempts) {
+                        FAIL("Token retrieval attempts exceed threshold, terminating test run (1)");
+                    }
                 }
                 CHECK(response.find(c.expect) != std::string::npos);
                 isFirst = false;
@@ -80,12 +145,11 @@ TEST_CASE("Test Llm-Wrapper class")
             llm.FreeLlm();
         }
 
-            /**
-             * Validate multi-turn context handling for a follow-up question after an image turn.
-             */
+
+        // Validate multi-turn context handling for a follow-up question after an image turn.
         SECTION("Follow Up Question")
         {
-            llm.LlmInit(configTest);
+            llm.LlmInit(configTest, s_backendSharedLibraryDir);
             std::string prompt = "What type of dress can you see in this image?";
 
             LLM::EncodePayload payload{prompt, std::string{TEST_RESOURCE_DIR} + "/" + "kimono.bmp", true};
@@ -96,6 +160,10 @@ TEST_CASE("Test Llm-Wrapper class")
                     if (s==llm.endToken)
                         break;
                     response1 += s;
+
+                    if (circuitBreaker++ > maxTokenRetrievalAttempts) {
+                        FAIL("Token retrieval attempts exceed threshold, terminating test run (2)");
+                    }
                 }
             CHECK(response1.find("kimono") != std::string::npos);
 
@@ -110,18 +178,19 @@ TEST_CASE("Test Llm-Wrapper class")
                     if (s==llm.endToken)
                         break;
                     response2 += s;
+
+                    if (circuitBreaker++ > maxTokenRetrievalAttempts) {
+                        FAIL("Token retrieval attempts exceed threshold, terminating test run (3)");
+                    }
                 }
             CHECK(response2.find("Japan") != std::string::npos);
             llm.FreeLlm();
         }
 
-            /**
-             * Validate reset context.
-             */
-
+        //     Validate reset context.
         SECTION("Reset Context")
         {
-            llm.LlmInit(configTest);
+            llm.LlmInit(configTest, s_backendSharedLibraryDir);
             std::string prompt =  "Can you describe this image?";
 
             LLM::EncodePayload payload{prompt, std::string{TEST_RESOURCE_DIR} + "/" + "tiger.bmp", true};
@@ -133,6 +202,10 @@ TEST_CASE("Test Llm-Wrapper class")
                     if (s==llm.endToken)
                         break;
                     response += s;
+
+                    if (circuitBreaker++ > maxTokenRetrievalAttempts) {
+                        FAIL("Token retrieval attempts exceed threshold, terminating test run (4)");
+                    }
                 }
             CHECK(response.find("tiger") != std::string::npos);
             llm.ResetContext();
@@ -150,16 +223,21 @@ TEST_CASE("Test Llm-Wrapper class")
                     if (s==llm.endToken)
                         break;
                     response2 += s;
+
+                    if (circuitBreaker++ > maxTokenRetrievalAttempts) {
+                        FAIL("Token retrieval attempts exceed threshold, terminating test run (5)");
+                    }
                 }
             CHECK(response2.find("tiger") == std::string::npos);
             llm.FreeLlm();
         }
     }
 
+    
     SECTION("Simple Query Response")
     {
         std::string response;
-        llm.LlmInit(configTest);
+        llm.LlmInit(configTest, s_backendSharedLibraryDir);
         LLM::EncodePayload payload{question, "", true};
         llm.Encode(payload);
         while (llm.GetChatProgress() < 100) {
@@ -167,6 +245,10 @@ TEST_CASE("Test Llm-Wrapper class")
             if (s==llm.endToken)
                 break;
             response += s;
+
+            if (circuitBreaker++ > maxTokenRetrievalAttempts) {
+                FAIL("Token retrieval attempts exceed threshold, terminating test run (6)");
+            }
         }
         CHECK(response.find("Paris") != std::string::npos);
     }
@@ -178,7 +260,7 @@ TEST_CASE("Test Llm-Wrapper class")
     {
         std::string emptyString;
         configTest.SetModelPath(emptyString);
-        REQUIRE_THROWS(llm.LlmInit(configTest));
+        REQUIRE_THROWS(llm.LlmInit(configTest, s_backendSharedLibraryDir));
     }
 
     llm.FreeLlm();

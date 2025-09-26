@@ -143,8 +143,9 @@ public:
     /**
      * @brief Initialize the LLM with configuration parameters.
      * @param config Configuration for model, vision projection, and threading.
+     * @param sharedLibraryPath path to location of shared libs
      */
-    void LlmInit(const LlmConfig& config) override;
+    void LlmInit(const LlmConfig& config, std::string sharedLibraryPath = "") override;
 
     /**
      * @brief Reset both the LLM text context and the vision context state.

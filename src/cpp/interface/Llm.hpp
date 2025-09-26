@@ -70,8 +70,9 @@ public:
     /**
      * Initialize the underlying model.
      * @param llmConfig Model and user parameters.
+     * @param sharedLibraryPath Specify the location of optional shared libraries.
      */
-    void LlmInit(const LlmConfig &llmConfig);
+    void LlmInit(const LlmConfig &llmConfig, std::string sharedLibraryPath = "");
 
     /** Free model resources. */
     void FreeLlm();

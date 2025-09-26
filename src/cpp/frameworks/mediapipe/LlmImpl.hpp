@@ -45,8 +45,9 @@ public:
     /**
      * Initializes the LLM engine and session with configuration settings.
      * @param config Configuration object containing model path and prefix.
+     * @param sharedLibraryPath path to location of shared libs
      */
-    void LlmInit(const LlmConfig& config);
+    void LlmInit(const LlmConfig& config, std::string sharedLibraryPath = "");
 
     /**
      * Encodes a query and appends it to the current conversation context.
