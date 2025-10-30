@@ -4,6 +4,16 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+# We default to share libs on for llama.cpp on android.
+# If the user attempts to configure this target with BUILD_SHARED_LIBS OFF
+# a fatal error will be thrown in llama_cpp/CMakeLists.txt.
+if (${LLM_FRAMEWORK} STREQUAL "llama.cpp" AND DEFINED ANDROID_ABI)
+    option(BUILD_SHARED_LIBS "BUILD_SHARED_LIBS" ON)
+else()
+    option(BUILD_SHARED_LIBS "BUILD_SHARED_LIBS" OFF)
+endif()
+message (STATUS "BUILD_SHARED_LIBS: ${BUILD_SHARED_LIBS}")
+
 # Pull in LLM framework library
 if (${LLM_FRAMEWORK} STREQUAL "llama.cpp")
     add_subdirectory(llama_cpp)

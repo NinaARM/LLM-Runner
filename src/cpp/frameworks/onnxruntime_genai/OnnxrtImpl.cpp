@@ -273,7 +273,7 @@ bool LLM::LLMImpl::ApplyAutoChatTemplate(LlmChat::Payload& payload)
         payload.textPrompt = std::move(formatted);
         return true;
     } catch (const std::exception& e) {
-        LOG_INF((std::string("ApplyChatTemplate failed: ") + e.what() + ". Falling back to default template.").c_str());
+        LOG_INF("ApplyChatTemplate failed: %s . Falling back to default template.", e.what());
         return false;
     }
 }

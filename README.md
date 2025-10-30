@@ -10,13 +10,15 @@
 <!-- TOC -->
 * [LLM library](#llm-library)
   * [Prerequisites](#prerequisites)
+  * [Quick start](#quick-start)
+  * [Cross Compilation for Android and Aarch64](#cross-compilation-for-android-and-aarch64)
+  * [To build an executable benchmark binary](#to-build-an-executable-benchmark-binary)
   * [Configuration options](#configuration-options)
     * [Conditional options](#conditional-options)
       * [llama cpp options](#llama-cpp-options)
       * [onnxruntime genai options](#onnxruntime-genai-options)
       * [mediapipe options](#mediapipe-options)
       * [mnn options](#mnn-options)
-  * [Quick start](#quick-start)
     * [Supported Models](#supported-models)
       * [llama cpp model](#llama-cpp-model)
         * [llama cpp multimodal](#llama-cpp-multimodal)
@@ -24,14 +26,8 @@
       * [mediapipe model](#mediapipe-model)
       * [mnn model](#mnn-model)
         * [mnn multimodal](#mnn-multimodal)
-    * [Native host build](#native-host-build)
-    * [To build for Android](#to-build-for-android)
-    * [To build for Linux](#to-build-for-linux)
-      * [Generic aarch64 target](#generic-aarch64-target)
       * [Aarch64 target with SME](#aarch64-target-with-sme)
     * [To Build for macOS](#to-build-for-macos)
-  * [Building and running tests](#building-and-running-tests)
-  * [To build an executable benchmark binary](#to-build-an-executable-benchmark-binary)
     * [llama cpp](#llama-cpp)
     * [onnxruntime genai](#onnxruntime-genai)
     * [mnn](#mnn)
@@ -63,15 +59,129 @@ applications.
 * Java Development Kit required for building JNI wrapper library necessary to utilise this module in an Android/Java application.
 * Create a [Hugging Face](https://huggingface.co) account and obtain a Hugging Face access token.
 
+## Quick start
+
+The project can be built and LLM tests exercised by simply running the following commands on supported platforms:
+
+```shell
+cmake --preset=native -B build 
+cmake --build ./build
+ctest --test-dir ./build
+```
+The commands above will use the default LLM framework (llama.cpp) and download a small number of LLM models. The tests exercise both vision and text queries. See [`LlmTest.cpp`](test/cpp/LlmTest.cpp) & [`LlmTestJNI.java`](test/java/com/arm/LlmTestJNI.java) for details.
+
+
+**ctest --test-dir ./build** command above should produce results similar to those give below (timings may vary):
+
+```shell
+Internal ctest changing into directory: /home/user/llm/build
+Test project /home/user/llm/build
+    Start 1: llm-cpp-ctest
+1/2 Test #1: llm-cpp-ctest ....................   Passed    4.16 sec
+    Start 2: llama-jni-ctest
+2/2 Test #2: llama-jni-ctest ..................   Passed    3.25 sec
+
+100% tests passed, 0 tests failed out of 2
+```
+
+## Cross Compilation for Android and Aarch64
+
+Cross compilation is also supported allowing the project to build binaries targeted to an OS/CPU architecture different from the host/build machine. For example it is possible to build the project on a Linux x86_64 platform and build binaries for Android™:
+
+```shell
+cmake --preset=x-android-aarch64  -B build 
+cmake --build ./build
+```
+
+However, the binaries would need to be uploaded to an Android™ device to exercise the tests.
+
+To target Linux-aarch64:
+
+```shell
+cmake --preset=x-linux-aarch64  -B build -DCPU_ARCH=Armv8.2_3
+cmake --build ./build
+```
+*-DCPU_ARCH* must be specified for all linux-aarch64 targets (including native when run on linux-aarch64).
+
+See the section below for additional cross-compilation options. 
+
+## To build an executable benchmark binary
+
+To build a standalone benchmark binary add the configuration option `-DBUILD_BENCHMARK=ON` to any of the build
+commands above. For example:
+
+On Aarch-64
+```shell
+cmake -B build --preset=native -DCPU_ARCH=Armv8.2_4 -DBUILD_BENCHMARK=ON
+cmake --build ./build
+```
+
+## Supported Platforms & cmake presets
+
+The supported build platforms and cmake presets matrix is given below. 
+The cmake presets (aka build target) are give in the first column and build platform are given in the first row. 
+So for example native builds are have been tested on Linux-x86_64, Linux-aarch64 & macOS-aarch64. While x-android-aarch64 (targets Android™ devices running on aarch64) builds are only tested on Linux-x86_64 & macOS-aarch64.
+
+|  cmake-preset / Host Platform  | Linux-x86_64| Linux-aarch64                      | macOS-aarch64 | Android™ |
+|--------------------------------------|---------------|------------------------------------|---------------|---------|
+| native                               | ✅            | ✅ *                              | ✅            | -      |
+| x-android-aarch64                    | ✅            | -                                 | ✅            | -      |
+| x-linux-aarch64                      | ✅            | ✅ †                              | -            | -      |
+
+
+ \* Linux-aarch64 requires the additional CPU_ARCH build flag, see configuration options below    
+ † Use 'native' preset
+
 ## Configuration options
 
-The project is designed to download the required software sources based on user
-provided configuration options. CMake presets are available to use and set the following variables:
+Configuration options are divided into 2 parts. The first part (what is covered in this section) is the overall project configuration. The second part covers configuration options relating to the specific LLM framework being used, e.g. llama.cpp/ ONNX or MediaPipe, these items are covered in the sections that follow. 
 
-- `LLM_FRAMEWORK`: Currently supports `llama.cpp` (default framework) and `onnxruntime-genai`.
-- `BUILD_JNI_LIB`: Build the JNI shared library that other projects can consume, <b>enabled by default.</b>
-- `BUILD_UNIT_TESTS`: Build C++ unit tests and add them to CTest, JNI tests will also be built, <b>enabled by default.</b>
-- `BUILD_BENCHMARK`: Build benchmark binary, <b>enabled by default.</b>
+Configuration option can be used with cmake presets.
+
+For example aarch64 CPU hardware acceleration can be disabled by setting USE_KLEIDIAI=OFF, e.g.
+This is useful when testing the uplift in performance due to Arm CPU hardware acceleration. 
+
+```shell
+cmake --preset=native -B build -DUSE_KLEIDIAI=OFF
+cmake --build ./build
+ctest --test-dir ./build
+```
+
+LLM_FRAMEWORK can be used to select the LLM framework, e.g. 
+
+```shell
+cmake --preset=native -B build -DLLM_FRAMEWORK=onnxruntime-genai
+cmake --build ./build
+ctest --test-dir ./build
+```
+
+Details on additional build options is given below: 
+
+Flag name | Default | Values | Description |
+|---|---|---|---|
+| LLM_FRAMEWORK | llama.cpp | llama.cpp / mediapipe / onnxruntime-genai / mnn | Specifies the backend framework to be used. |
+| BUILD_DEBUG | OFF | ON/OFF | If set to ON a debug build is configured. |
+| BUILD_TESTING | ON | ON/OFF | Builds the project's functional tests when ON. |
+| BUILD_BENCHMARK | OFF | ON/OFF | Builds the benchmark tests for the project when ON. |
+| BUILD_JNI_BINDINGS | ON | ON/OFF | Builds the JNI bindings for the project. |
+| LOG_LEVEL | INFO/DEBUG | DEBUG, INFO, WARN &  ERROR | For BUILD_DEBUG=OFF the default value is INFO. For BUILD_DEBUG=ON, the default value is DEBUG. |
+| USE_KLEIDIAI | ON | ON/OFF | Build the project with KLEIDIAI CPU optimizations; if set to OFF, optimizations are turned off. |
+| CPU_ARCH | Not defined | Armv8.2_1, Armv8.2_2, Armv8.2_3, Armv8.2_4, Armv8.2_5, Armv8.6_1, Armv8.6_2, Armv9.2_1, Armv9.2_2 | Sets the target ISA architecture (AArch64). Not all targets support this flag. Only supported with LLM_FRAMEWORK=llama.cpp when targeting linux-aarch64 only. |
+
+The table below gives the mapping of CPU_ARCH flags to Arm CPU features
+
+| CPU_ARCH     | C/C++ compiler flags                             |
+|--------------|--------------------------------------------------|
+| Armv8.2_1    | -march=armv8.2-a+dotprod                       |
+| Armv8.2_2    | -march=armv8.2-a+dotprod+fp16                  |
+| Armv8.2_3    | -march=armv8.2-a+dotprod+fp16+sve              |
+| Armv8.2_4    | -march=armv8.2-a+dotprod+i8mm                  |
+| Armv8.2_5    | -march=armv8.2-a+dotprod+i8mm+sve+sme          |
+| Armv8.6_1    | -march=armv8.6-a+dotprod+fp16+sve+i8mm         |
+| Armv8.6_2    | -march=armv8.6-a+dotprod+fp16+sve+i8mm+sve2    |
+| armv9.2_1    | -march=armv9.2-a+dotprod+fp16+sve+i8mm+sme     |
+| armv9.2_2    | -march=armv9.2-a+dotprod+fp16+sve+i8mm+sve2+sme|
+
 
 > **NOTE**: If you need specific version of Java set the path in `JAVA_HOME` environment variable.
 > ```shell
@@ -99,7 +209,6 @@ For `llama.cpp` as framework, these configuration parameters can be set:
 - `LLAMA_GIT_URL`: Git URL to clone the sources from.
 - `LLAMA_GIT_SHA`: Git SHA for checkout.
 - `LLAMA_BUILD_COMMON`: Build llama's dependency Common, <b>enabled by default.</b>
-- `BUILD_SHARED_LIBS`: Build shared instead of static dependency libraries, specifically - ggml and common, <b>disabled by default.</b>
 - `LLAMA_CURL`: Enable HTTP transport via libcurl for remote models or features requiring network communication, <b>disabled by default.</b>
 
 #### onnxruntime genai options
@@ -148,10 +257,6 @@ For customising MNN framework , following parameters can be used:
 
 > **NOTE**: This repository has been tested with `MNN` version `v3.3.0`.
 
-## Quick start
-
-By default, the JNI builds are enabled, and Arm® KleidiAI™ kernels are enabled on arm64/aarch64.
-To disable these, configure with: `-DUSE_KLEIDIAI=OFF`.
 
 ### Supported Models
 
@@ -269,51 +374,14 @@ The `MNN` backend **also supports multimodal (image + text)** inference in this 
 
 You can find an example multimodal configuration in [mnnVisionConfig-qwen2.5-3B.json](model_configuration_files/mnnVisionConfig-qwen2.5-3B.json)
 
-### Native host build
 
-```shell
-cmake -B build --preset=native-release-with-tests
-cmake --build ./build
-```
-### To build for Android
-For Android™ build, ensure the `NDK_PATH` is set to installed Android™ NDK, specify Android™ ABI and platform if required or use a default preset e.g. android-arm64-release-kleidi-on-v82a-dotprod-i8mm. 
-```shell
-cmake -B build \
-    -DCMAKE_TOOLCHAIN_FILE=${NDK_PATH}/build/cmake/android.toolchain.cmake \
-    -DANDROID_ABI=arm64-v8a \
-    -DANDROID_PLATFORM=android-33 \
-    -DBUILD_SHARED_LIBS=ON
-
-cmake --build ./build
-```
-
-### To build for Linux
-
-Building for Linux targets, with `llama.cpp` backend, `GGML_CPU_ARM_ARCH` can be set to provide the architecture flags.
-
-#### Generic aarch64 target
-
-As an example, for a target with `FEAT_DOTPROD` and `FEAT_I8MM` available, the configuration command might be:
-
-```shell
-cmake -B build \
-    --preset=elinux-aarch64-release-with-tests \
-    -DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod+i8mm \
-    -DBUILD_BENCHMARK=ON
-
-cmake --build ./build
-```
 
 #### Aarch64 target with SME
 
-To build for aarch64 Linux system with [Scalable Matrix Extensions](https://developer.arm.com/documentation/109246/0100/SME-Overview/SME-and-SME2), for `llama.cpp` ensure `GGML_CPU_ARM_ARCH` is set with needed feature flags as below:
+To build for aarch64 Linux system with [Scalable Matrix Extensions](https://developer.arm.com/documentation/109246/0100/SME-Overview/SME-and-SME2):
 
 ```shell
-cmake -B build \
-    --preset=elinux-aarch64-release-with-tests \
-    -DGGML_CPU_ARM_ARCH=armv8.2-a+dotprod+i8mm+sve+sme \
-    -DBUILD_BENCHMARK=ON
-
+cmake -B build --preset=native -DCPU_ARCH=Armv8.2_5
 cmake --build ./build
 ```
 
@@ -339,17 +407,12 @@ GGML_KLEIDIAI_SME=0 ./build/bin/llama-cli -m resources_downloaded/models/llama.c
 >    -DGGML_OPENMP=OFF
 > ```
 
-> **NOTE**: Currently it is recommended for aarch64 Linux builds that the GGML_CPU_ARM_ARCH flag be set for the target system. 
-> Not setting the flag may result in build issues and / or runtime errors.
-
 ### To Build for macOS
 
 To build for the CPU backend on macOS®, you can use the native CMake toolchain.
-However, additional flags are required to explicitly disable the default backends:
+
 ```shell
-cmake -B build --preset=native-release-with-tests \
-    -DGGML_METAL=OFF \
-    -DGGML_BLAS=OFF
+cmake -B build --preset=native
 cmake --build ./build
 ```
 > **NOTE**: If you need specific version of Java set the path in `JAVA_HOME` environment variable.
@@ -370,57 +433,6 @@ To run without invoking SME kernels, set `GGML_KLEIDIAI_SME=0` during execution:
 
 ```shell
 GGML_KLEIDIAI_SME=0 ./build/bin/llama-cli -m resources_downloaded/models/llama.cpp/model.gguf -t 1 -p "What is a car?"
-```
-
-## Building and running tests
-
-To build and test for native host machine:
-
-```shell
-cmake -B build --preset=native-release-with-tests
-cmake --build ./build
-ctest --test-dir ./build
-```
-
-> **NOTE**: For consistent and reliable test results, avoid using the `--parallel` option when running tests.
-
-This should produce something like:
-```shell
-Internal ctest changing into directory: /home/user/llm/build
-Test project /home/user/llm/build
-    Start 1: llm-cpp-ctest
-1/2 Test #1: llm-cpp-ctest ....................   Passed    4.16 sec
-    Start 2: llama-jni-ctest
-2/2 Test #2: llama-jni-ctest ..................   Passed    3.25 sec
-
-100% tests passed, 0 tests failed out of 2
-
-Total Test time (real) =   7.41 sec
-```
-
-Even when cross-compiling, the test binaries can be copied to the target system and executed.
-
-## To build an executable benchmark binary
-
-To build a standalone benchmark binary add the configuration option `-DBUILD_BENCHMARK=ON` to any of the build
-commands above. For example:
-
-On Aarch-64
-```shell
-cmake -B build \
-    --preset=elinux-aarch64-release-with-tests \
-    -DCMAKE_C_FLAGS=-march=armv8.2-a+dotprod+i8mm \
-    -DCMAKE_CXX_FLAGS=-march=armv8.2-a+dotprod+i8mm \
-    -DBUILD_BENCHMARK=ON
-cmake --build ./build
-```
-
-Or on x86 (No Kleidi Acceleration)
-```shell
-cmake -B build \
-    --preset=native-release-with-tests \
-    -DBUILD_BENCHMARK=ON
-cmake --build ./build
 ```
 
 ### llama cpp

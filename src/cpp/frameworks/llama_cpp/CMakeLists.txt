@@ -12,6 +12,29 @@ project(llama-cpp-wrapper
 include(FetchContent)
 include(check-flag)
 
+if (${LLM_FRAMEWORK} STREQUAL "llama.cpp")
+    # For Android we build the variant arch backend shared libraries
+    if(DEFINED ANDROID_ABI)
+        # The following block of code ensures that BUILD_SHARED_LIBS defaults to ON for android builds.
+        # If the BUILD_SHARED_LIBS is OFF via the CLI / Cache the build failed with an error message
+        if(NOT BUILD_SHARED_LIBS)
+            message(FATAL_ERROR
+                    "BUILD_SHARED_LIBS must be ON for android. You passed -DBUILD_SHARED_LIBS=OFF or it is cached as OFF.\n"
+                    "Fix by re-configuring with -DBUILD_SHARED_LIBS=ON and/or deleting entry from cache.")
+        endif()
+
+        # Build ALL ARCH variants by default
+        set(GGML_BACKEND_DL ON)
+        set(GGML_CPU_ALL_VARIANTS ON)
+    else()
+        if(BUILD_SHARED_LIBS)
+            # If the user specified BUILD_SHARED_LIBS build all arch variants by default
+            set(GGML_BACKEND_DL ON)
+            set(GGML_CPU_ALL_VARIANTS ON)
+        endif()
+    endif()
+endif()
+
 # Where should llama.cpp sources be cloned into?
 # It might make sense to download sources into resources as well and not
 # every time into the CMake binary directory. However, because we currently
@@ -60,20 +83,7 @@ if(BUILD_BENCHMARK)
 endif()
 
 # For Android we build the variant arch backend shared libraries
-if(DEFINED ANDROID_ABI)
-
-    # The following block of code ensures that BUILD_SHARED_LIBS defaults to ON for android builds.
-    # If the BUILD_SHARED_LIBS is OFF via the CLI / Cache the build failed with an error message
-    option(BUILD_SHARED_LIBS "BUILD_SHARED_LIBS is required for android builds" ON)
-    if(NOT BUILD_SHARED_LIBS)
-        message(FATAL_ERROR
-                "BUILD_SHARED_LIBS must be ON for android. You passed -DBUILD_SHARED_LIBS=OFF or it is cached as OFF.\n"
-                "Fix by re-configuring with -DBUILD_SHARED_LIBS=ON and/or deleting entry from cache.")
-    endif()
-
-    set(GGML_BACKEND_DL ON)
-    set(GGML_CPU_ALL_VARIANTS ON)
-
+if (${LLM_FRAMEWORK} STREQUAL "llama.cpp" AND DEFINED ANDROID_ABI)           
     include(llama-cpp-workaround)
 endif()
 
