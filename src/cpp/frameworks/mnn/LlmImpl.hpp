@@ -81,6 +81,11 @@ public:
     std::string NextToken();
 
     /**
+    * Method to request the cancellation of a ongoing operation / functional call
+    */
+    void Cancel();
+
+    /**
      * The method return the percentage of chat context filled
      * @return chat capacity filled in cache as percentage number
      */

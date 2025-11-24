@@ -6,12 +6,131 @@
 
 #include "LlmImpl.hpp"
 #include <string>
-#include <mutex>
 #include <iostream>
 #include <filesystem>
 
 #include "Logger.hpp"
 
+// Enqueues a token into the queue if the supplied epoch matches the current one.
+// Notifies one waiting consumer that new data may be available.
+void TokenQueue::enqueue(uint64_t epoc, std::string token) {
+    bool pushed = false;
+    {
+        std::lock_guard<std::mutex> lk(m_mutex);
+        if (epoc == m_eosEpoch) {
+            m_queue.push_back(std::move(token));
+            m_numQueued++;
+            pushed = true;
+        }
+    }
+
+    if (pushed) {
+        m_conditionVariable.notify_one();
+    }
+}
+
+
+// Blocks until either a token becomes available for the current epoch
+// or the epoch changes (via reset). Returns the next token on success,
+// or an empty string if a reset was signaled while waiting.
+std::string TokenQueue::dequeue() {
+    std::unique_lock<std::mutex> lk(m_mutex);
+    const uint64_t seen_epoch = m_eosEpoch; // snapshot before waiting
+
+    m_conditionVariable.wait(lk, [&]{
+        // Wake on either: new data or epoch change.
+        return !m_queue.empty() || m_eosEpoch != seen_epoch;
+    });
+
+    // If the epoch changed while we waited, surface a reset signal.
+    if (m_eosEpoch != seen_epoch) {
+        return std::string(); // empty string indicates reset
+    }
+
+    std::string token = std::move(m_queue.front());
+    m_queue.pop_front();
+    return token;
+}
+
+// Clears all queued tokens, increments the epoch to invalidate any
+// pending producers/consumers, wakes all waiters, and returns the new epoch.
+uint64_t TokenQueue::reset() {
+    uint64_t new_epoch;
+    {
+        std::lock_guard<std::mutex> lk(m_mutex);
+        m_queue.clear();
+        m_numQueued = 0;
+        new_epoch = ++m_eosEpoch;
+    }
+    m_conditionVariable.notify_all(); // wake all waiters; dequeue() will return ""
+    return new_epoch;
+}
+
+// Returns true if the queue currently has no tokens.
+bool TokenQueue::empty() const {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    return m_queue.empty();
+}
+
+// Returns the number of tokens that have been queued since the last reset.
+uint64_t TokenQueue::numQueued() const {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    return m_numQueued;
+}
+
+// Returns the current epoch value used to distinguish queue lifetimes.
+uint64_t TokenQueue::epoch() const {
+    std::lock_guard<std::mutex> lk(m_mutex);
+    return m_eosEpoch;
+}
+
+
+/**
+  * LlmModelContext groups together metadata and shared state needed while
+ * interacting with the language model, such as the current epoch/id,
+ * the token queue used for streaming tokens, and the end-of-sequence marker.
+ */
+struct LlmModelContext {
+    /**
+     * @brief Logical epoch / generation identifier.
+     *
+     * Can be used to distinguish between different runs, requests, or
+     * versions of the model state that share the same underlying queues.
+     */
+    uint64_t m_epoc;
+
+    /**
+     * @brief Reference to the token queue used to send or receive tokens.
+     *
+     * This queue typically carries tokens produced by the model or
+     * consumed by downstream components (e.g., a streamer or client).
+     * The context does not own the queue; it must remain valid for the
+     * lifetime of this LlmModelContext.
+     */
+    TokenQueue& m_tokenQueue;
+
+    /**
+     * @brief End-of-sequence (EOS) marker for this context.
+     *
+     * When this string is produced or encountered, it usually signals that
+     * the current generation should stop.
+     */
+    std::string m_eos;
+
+    /**
+     * @brief Constructs a new LlmModelContext.
+     *
+     * @param epoc        Logical epoch / generation identifier.
+     * @param tokenQueue  Reference to the token queue associated with this context.
+     * @param eos         End-of-sequence marker string.
+     */
+    explicit LlmModelContext(uint64_t epoc,
+                             TokenQueue& tokenQueue,
+                             std::string eos)
+        : m_epoc(epoc),
+          m_tokenQueue(tokenQueue),
+          m_eos(std::move(eos)) { }
+};
 
 /**
  * @brief Mediapipe Implementation of our LLM API
@@ -34,27 +153,26 @@ std::string GetCacheDir() {
     }
 }
 
-std::string GetExtraStringPart(const std::string& resultString, const std::string& llmCallbackString) {
-
-    if (llmCallbackString.size() >= resultString.size() && llmCallbackString.compare(0, resultString.size(), resultString) == 0) {
-        return llmCallbackString.substr(resultString.size());
-    }
-    return ""; // resultString we extracted is not a prefix of llmEngine's response string
-}
-
+/**
+ * Method to be registered as cpu_callback function inside Llm's Inference Engine after each token computation.
+ * @param ctx This is a pointer to CallbackContext. We use the members of CallbackContext to synchronize token stream.
+ * @param response_context Context for LLM to store information about each token
+ */
 void LlmCallback(void* ctx, LlmResponseContext* response_context) {
-    // Register as cpu_callback function inside Llm's Inference Engine
-    auto* context = reinterpret_cast<CallbackContext*>(ctx);
-    context->m_asyncResponse += std::string(response_context->response_array[0]);
-    context->m_nCur++;
+
+    auto llmModelContext = (LlmModelContext*) ctx;
+
+    auto token = response_context->response_array[0];
+    if ( std::strlen(token) > 0) {
+        llmModelContext->m_tokenQueue.enqueue(llmModelContext->m_epoc,
+                                              response_context->response_array[0]);
+    }
+
     if (response_context->done) {
-        context->m_done = true;
+        llmModelContext->m_tokenQueue.enqueue(llmModelContext->m_epoc,
+                                              llmModelContext->m_eos);
+        delete llmModelContext;
     }
-    else {
-        context->m_done = false;
-    }
-    // Notify the NextToken function to extract predicted token
-    context->m_callbackStatus.notify_one();
 }
 
 void LLM::LLMImpl::LoadEngine(const std::string& model_path, const std::string& cache_dir)
@@ -73,6 +191,7 @@ void LLM::LLMImpl::LoadEngine(const std::string& model_path, const std::string& 
         free(this->m_errorMsg);
     }
 }
+
 
 void LLM::LLMImpl::LoadSession()
 {
@@ -111,7 +230,6 @@ void LLM::LLMImpl::LlmInit(const LlmConfig& config, std::string sharedLibraryPat
         }
         this->m_conversationContext = "";
         this->m_llmInitialized      = true;
-        this->m_callbackContext.m_nCur = 0;
     } catch (const std::exception& e) {
         THROW_ERROR("LLM initialization failed: %s" , e.what());
     }
@@ -120,7 +238,8 @@ void LLM::LLMImpl::LlmInit(const LlmConfig& config, std::string sharedLibraryPat
 
 void LLM::LLMImpl::Encode(LlmChat::Payload& payload)
 {
-    this->m_callbackContext.m_done = false;
+    LOG_INF("Sending in query %s\n", payload.textPrompt.c_str());
+
     std::string _query = this->m_conversationContext + payload.textPrompt;
     this->m_errorCode  = LlmInferenceEngine_Session_AddQueryChunk(
         this->m_llmEngineSession, _query.c_str(), &this->m_errorMsg);
@@ -128,47 +247,40 @@ void LLM::LLMImpl::Encode(LlmChat::Payload& payload)
         free(this->m_errorMsg);
         THROW_ERROR("Encode: Failed to evaluate: %s", this->m_errorMsg);
     }
+
     this->m_conversationContext = _query;
-    this->m_callbackContext.m_nCur =  LlmInferenceEngine_Session_SizeInTokens(this->m_llmEngineSession, _query.c_str(), &this->m_errorMsg);
-    if (this->m_callbackContext.m_nCur < 0) {
+    auto nCur =  LlmInferenceEngine_Session_SizeInTokens(this->m_llmEngineSession,
+                                                         _query.c_str(), &this->m_errorMsg);
+    if (nCur < 0) {
         free(this->m_errorMsg);
         LOG_ERROR("Mediapipe Chat Progress Finder failed:");
         return;
     }
-    if (this->m_callbackContext.m_nCur >= this->m_nCtx) {
-        THROW_ERROR("Mediapipe encode- Failed to evaluate: context is full" );
-    }
-    // clear response strings for synchronization
-    this->m_callbackContext.m_asyncResponse.clear();
-    this->m_singleResponse.clear();
+
+    auto epoc = m_tokenQueue.reset();
+    auto context = new LlmModelContext(epoc, this->m_tokenQueue, this->m_eos);
 
     // The prediction can start as soon we encode. extract the tokens twith NextToken call.
     this->m_errorCode = LlmInferenceEngine_Session_PredictAsync(
-    this->m_llmEngineSession,&this->m_callbackContext, &this->m_errorMsg, LlmCallback);
+    this->m_llmEngineSession, context, &this->m_errorMsg, LlmCallback);
     if (this->m_errorCode) {
         THROW_ERROR("Mediapipe predictAsync - Failed to decode token: %s", this->m_errorMsg);
     }
 }
 
+
 std::string LLM::LLMImpl::NextToken()
 {
-    std::string response;
-    if (this->m_callbackContext.m_done)
-        return "";
-    bool complete = false;
-     {
-        std::unique_lock<std::mutex> lock(this->m_callbackContext.m_callbackMutex);
+    auto token = m_tokenQueue.dequeue();
+    return token;
+}
 
-        // Wait unconditionally for a notification
-        this->m_callbackContext.m_callbackStatus.wait(lock);
-        //response the part of singleResponse-string not yet extracted from llmEngine.
-        response = GetExtraStringPart(this->m_singleResponse, this->m_callbackContext.m_asyncResponse);
-        // the lock helps to synchronize the completion of response
-        complete = this->m_callbackContext.m_done;
-    };
-    this->m_conversationContext += response;
-    this->m_singleResponse += response;
-    return  complete? response + m_eos : response;
+
+void LLM::LLMImpl::Cancel() {
+    LOG_INF("Cancelling current operation and reseting context");
+    
+    this->StopGeneration();
+    m_tokenQueue.reset();
 }
 
 float LLM::LLMImpl::GetEncodeTimings()
@@ -198,9 +310,9 @@ void LLM::LLMImpl::KVCacheClear()
 
 int32_t LLM::LLMImpl::GetInitialPromptLength(const char* text)
 {
-
     auto nPrefix =
-        LlmInferenceEngine_Session_SizeInTokens(this->m_llmEngineSession, text, &this->m_errorMsg);
+        LlmInferenceEngine_Session_SizeInTokens(this->m_llmEngineSession,
+                                                text, &this->m_errorMsg);
     if (nPrefix < 0) {
         free(this->m_errorMsg);
         LOG_ERROR("Mediapipe Prefix Length Finder failed: %s", this->m_errorMsg);
@@ -213,15 +325,14 @@ void LLM::LLMImpl::ResetContext()
 {
     if (!this->m_systemPrompt.empty()) {
         try {
-            auto n_prefix               = GetInitialPromptLength(this->m_systemPrompt.c_str());
-            this->m_callbackContext.m_nCur                = n_prefix;
+            auto n_prefix= GetInitialPromptLength(this->m_systemPrompt.c_str());
             this->m_conversationContext = this->m_systemPrompt;
         } catch (const std::exception& e) {
             LOG_ERROR("Context reset failed: %s", e.what());
         }
     } else {
         KVCacheClear();
-        this->m_callbackContext.m_nCur  = 0;
+
         this->m_conversationContext = "";
         this->m_isConversationStart = true;
     }
@@ -229,7 +340,7 @@ void LLM::LLMImpl::ResetContext()
 
 size_t LLM::LLMImpl::GetChatProgress()
 {
-     return (this->m_callbackContext.m_nCur * 100) / this->m_nCtx;
+     return (this->m_tokenQueue.numQueued() * 100) / this->m_nCtx;
 }
 
 void LLM::LLMImpl::FreeLlm()
@@ -257,6 +368,8 @@ std::string LLM::LLMImpl::BenchModel(int& prompts, int& eval_prompts, int& n_max
 void LLM::LLMImpl::StopGeneration()
 {
      // Signal to cancel the response , helps in sending next query
-     LlmInferenceEngine_Session_PendingProcessCancellation(static_cast<LlmInferenceEngine_Session*>(this->m_llmEngineSession),&this->m_errorMsg);
+     LlmInferenceEngine_Session_PendingProcessCancellation(
+             static_cast<LlmInferenceEngine_Session*>(this->m_llmEngineSession),
+             &this->m_errorMsg);
 }
 

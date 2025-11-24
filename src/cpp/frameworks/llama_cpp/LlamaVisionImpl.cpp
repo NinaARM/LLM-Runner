@@ -201,6 +201,10 @@ std::string LlamaVisionImpl::NextToken() {
     return common_token_to_piece(this->m_mtmdContext->lctx, token_id);
 }
 
+void LlamaVisionImpl::Cancel() {
+    LOG_INF("Cancelling current operation and context");
+}
+
 size_t LlamaVisionImpl::GetChatProgress() const {
     return this->m_contextFilled;
 }

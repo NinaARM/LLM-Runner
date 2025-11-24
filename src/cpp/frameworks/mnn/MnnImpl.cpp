@@ -108,6 +108,10 @@ std::string LLM::LLMImpl::NextToken() {
     return m_llm->tokenizer_decode(token_id);
 }
 
+void LLM::LLMImpl::Cancel() {
+    LOG_INF("Cancelling current operation");
+}
+
 size_t LLM::LLMImpl::GetChatProgress() {
     return 100 * m_ctx->all_seq_len / this->m_nCtx;
 }

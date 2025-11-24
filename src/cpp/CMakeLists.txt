@@ -25,7 +25,7 @@ add_subdirectory(frameworks)
 
 # Actual API library that depends on framework
 add_library(arm-llm-cpp STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/Llm.cpp)
+    ${CMAKE_CURRENT_SOURCE_DIR}/Llm.cpp ${CMAKE_CURRENT_SOURCE_DIR}/LlmBridge.cpp)
 
 # Libraries needed
 target_link_libraries(arm-llm-cpp PUBLIC

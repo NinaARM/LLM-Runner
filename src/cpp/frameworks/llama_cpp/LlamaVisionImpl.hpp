@@ -165,7 +165,12 @@ public:
      * @return The decoded token as a string.
      */
     std::string NextToken() override;
-
+ 
+    /**
+    * Method to request the cancellation of a ongoing operation / functional call
+    */
+    void Cancel();
+    
     /**
      * @brief Report current chat progress as a percentage of context used.
      * @return Progress in the range [0, 100].

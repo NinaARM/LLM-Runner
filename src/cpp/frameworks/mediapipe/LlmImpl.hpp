@@ -11,28 +11,133 @@
 #include "llm_inference_engine.h"
 #include <string>
 #include <mutex>
+#include <deque>
 #include <condition_variable>
 
+
 /**
- * @brief Structure to hold all members of llmEngine's callback utilities
+ * @class TokenQueue
+ * @brief A thread-safe queue of string tokens gated by an epoch value.
+ *
+ * This queue supports multiple producers and consumers. Tokens are only accepted
+ * into the queue if the provided epoch matches the current queue epoch.
+ * Consumers block in @ref dequeue until either a token for the current epoch
+ * arrives or the epoch changes (in which case an empty string is returned to
+ * signal a reset).
+ *
+ * Typical usage:
+ * @code
+ * TokenQueue q;
+ * auto e = q.epoch();           // get current epoch
+ * q.enqueue(e, "hello");        // accepted
+ * std::string t = q.dequeue();  // -> "hello"
+ *
+ * e = q.reset();                // bump epoch, clear pending tokens
+ * q.enqueue(e-1, "stale");      // ignored (stale epoch)
+ * std::string t2 = q.dequeue(); // blocks until a token for epoch e arrives,
+ *                               // or returns "" if epoch changes again
+ * @endcode
+ *
+ * @note All public member functions are thread-safe.
+ * @note Link with threads support, e.g. `-pthread` on GCC/Clang.
  */
-struct CallbackContext {
+class TokenQueue {
+public:
+    /// @brief Construct an empty queue with initial epoch 0.
+    TokenQueue() = default;
 
-    /// Stores the asynchronous response string from the engine.
-    std::string m_asyncResponse;
+    /// @brief Default destructor.
+    ~TokenQueue() = default;
 
-    /// Indicates whether the callback has completed.
-    bool m_done = false;
+    // Non-copyable / non-movable (m_mutex/condvar members make this awkward).
+    TokenQueue(const TokenQueue&) = delete;            ///< @private
+    TokenQueue& operator=(const TokenQueue&) = delete; ///< @private
+    TokenQueue(TokenQueue&&) = delete;                 ///< @private
+    TokenQueue& operator=(TokenQueue&&) = delete;      ///< @private
 
-    /// Synchronizes access to the callback state.
-    std::mutex m_callbackMutex;
+    /**
+     * @brief Enqueue a token iff the provided epoch matches the current epoch.
+     *
+     * If @p epoc does not match the current epoch, the token is discarded.
+     * On successful push, one waiting consumer is notified.
+     *
+     * @param epoc Epoch to validate against the current queue epoch.
+     * @param token The token to enqueue (moved if accepted).
+     *
+     * @post If @p epoc equals the current epoch, queue size increases by 1.
+     * @post If accepted, a waiting consumer is notified.
+     *
+     * thread_safety Safe to call concurrently with other member functions.
+     */
+    void enqueue(uint64_t epoc, std::string token);
 
-    /// Signals completion or state change for the callback.
-    std::condition_variable m_callbackStatus;
+    /**
+     * @brief Dequeue a token for the current epoch, waiting if necessary.
+     *
+     * Blocks until either:
+     *  - a token is available for the current epoch; or
+     *  - the epoch changes via @ref reset (or otherwise).
+     *
+     * If the epoch changes while waiting, returns an empty string to indicate
+     * that consumers should refresh their view of the epoch and possibly
+     * restart their logic.
+     *
+     * @return The next token (when available) or an empty string if the epoch
+     *         changed while waiting.
+     *
+     * thread_safety Safe to call concurrently with other member functions.
+ */
+    std::string dequeue();
 
-    ///Models context filled indicator is moved here for efficient update
-    int m_nCur;
+    /**
+     * @brief Bump the epoch, clear any queued tokens, and notify all waiters.
+     *
+     * Increments the internal epoch, clears the pending queue, and wakes all
+     * waiting consumers (which will cause @ref dequeue to return an empty
+     * string if they were waiting on the previous epoch).
+     *
+     * @return The new epoch value after increment.
+     *
+     * @post Queue is empty.
+     * @post All waiting consumers are notified.
+     *
+     * thread_safety Safe to call concurrently with other member functions.
+     */
+    uint64_t reset();
+
+    /**
+       * @brief returns the number of total tokens queued for this epoc
+       *
+       * @return  returns the number of total token queued on this epoc
+       *
+       * thread_safety Safe to call concurrently with other member functions.
+       */
+    uint64_t numQueued() const;
+    /**
+     * @brief Check whether the queue is empty.
+     * @return @c true if empty, @c false otherwise.
+     *
+     * thread_safety Safe to call concurrently with other member functions.
+     */
+    bool empty() const;
+
+    /**
+     * @brief Get the current epoch value.
+     * @return The current epoch.
+     *
+     * thread_safety Safe to call concurrently with other member functions.
+     */
+    uint64_t epoch() const;
+
+private:
+    mutable std::mutex m_mutex;                ///< Protects all members below.
+    std::condition_variable m_conditionVariable;          ///< Signals enqueue/reset events.
+    std::deque<std::string> m_queue;           ///< FIFO of tokens for current epoch.
+    uint64_t m_eosEpoch = 0;              ///< Current epoch (starts at 0).
+    uint64_t m_numQueued = 0;              ///< Current epoch (starts at 0).
+
 };
+
 
 /**
  * @brief Mediapipe Implementation of our LLM API
@@ -61,6 +166,26 @@ public:
      * @return response
      */
     std::string NextToken();
+ 
+    /**
+    * Method to request the cancellation of a ongoing operation / functional call
+    */
+    void Cancel();
+
+    /**
+     * @brief Enqueue a token iff the provided epoch matches the current epoch.
+     *
+     * If @p epoc does not match the current epoch, the token is discarded.
+     * On successful push, one waiting consumer is notified.
+     *
+     * @param epoc Epoch to validate against the current queue epoch.
+     * @param token The token to enqueue (moved if accepted).
+     *
+     * @post If @p epoc equals the current epoch, queue size increases by 1.
+     * @post If accepted, a waiting consumer is notified.
+     *
+     */
+    void enqueueToken(uint64_t epoc, std::string& token);
 
     /**
      * Function to retrieve the mediapipe encode timings.
@@ -163,10 +288,6 @@ private:
     std::string m_conversationContext;
     // Structure holding response metadata
     LlmResponseContext m_llmResponseContext;
-    // Context for user-defined callbacks
-    CallbackContext m_callbackContext;
-    // Most recent single response string
-    std::string m_singleResponse;
     // Configuration for model
     LlmConfig m_config;
 
@@ -193,6 +314,11 @@ private:
      * Initializes the session handle for inference.
      */
     void LoadSession();
+
+    /**
+     * Stores tokens retrieved from the model in a thread safe Queue
+    */
+    TokenQueue m_tokenQueue = TokenQueue();
 };
 
 #endif /* LLM_IMPL_HPP */

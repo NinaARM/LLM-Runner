@@ -18,6 +18,7 @@ import org.junit.BeforeClass;
 import com.arm.Llm;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.io.IOException;
@@ -67,7 +68,7 @@ public class LlmTestJNI {
         Llm llm = new Llm();
         llm.llmInit(configJson.toString(), backendSharedLibDir);
         String question = "What is your name?";
-        String response = llm.send(question, true);
+        String response = llm.getResponse(question);
         checkLlmMatch(response, "Ferdia", true);
         llm.freeModel();
         // Revert the configJson to preserve original system prompt and modelTag
@@ -79,16 +80,17 @@ public class LlmTestJNI {
         llm.llmInit(configJson.toString(), backendSharedLibDir);
 
         String question1 = "What is the capital of Canada?";
-        String response1 = llm.send(question1, true);
+        String response1 = llm.getResponse(question1);
         checkLlmMatch(response1, "Ottawa", true);
 
         // Resetting context should cause model to forget what country is being referred to
         llm.resetContext();
 
-        String question2 = "What country is that capital of? Reply with one word.";
-        String response2 = llm.send(question2, true);
+        String question2 = "What country is that capital of? Reply with one word. please.";
+        String response2 = llm.getResponse(question2);
         checkLlmMatch(response2, "Canada", false);
         llm.freeModel();
+      
     }
 
     @Test
@@ -97,11 +99,11 @@ public class LlmTestJNI {
         llm.llmInit(configJson.toString(), backendSharedLibDir);
 
         String question1 = "What is the capital of Canada?";
-        String response1 = llm.send(question1, true);
+        String response1 = llm.getResponse(question1);
         checkLlmMatch(response1, "Ottawa", true);
 
         String question2 = "What country is that capital of? Reply with one word.";
-        String response2 = llm.send(question2, true);
+        String response2 = llm.getResponse(question2);
         checkLlmMatch(response2, "Canada", true);
         llm.freeModel();
     }
@@ -111,20 +113,16 @@ public class LlmTestJNI {
         Llm llm = new Llm();
         llm.llmInit(configJson.toString(), backendSharedLibDir);
 
-        String question1 = "What is the capital of Canada?";
-        String response1 = llm.send(question1, true);
-        checkLlmMatch(response1, "Ottawa", true);
-
-        String question2 = "What country is that capital of? Reply with one word.";
-        String response2 = llm.send(question2, true);
-        checkLlmMatch(response2, "Canada", true);
+        String question1 = "What is the capital of the USA?";
+        String response1 = llm.getResponse(question1);
+        checkLlmMatch(response1, "Washington", true);
 
         // Send an empty prompt to simulate blank recordings or non-speech tokens being returned by speech recognition;
         // then ask follow-up questions to ensure previous context persists when an empty prompt is injected in the conversation.
-        String emptyResponse = llm.send("", true);
+        String emptyResponse = llm.getResponse("");
 
-        String question3 = "What languages do they speak there?";
-        String response3 = llm.send(question3, true);
+        String question3 = "List the top 3 languages spoken in that city?";
+        String response3 = llm.getResponse(question3);
         checkLlmMatch(response3, "English", true);
         llm.freeModel();
     }
@@ -140,7 +138,7 @@ public class LlmTestJNI {
 
         // Set the initial ground truth in the conversation.
         String initialContext = "There are " + originalMangoes + " mangoes in a basket.";
-        String initResponse = llm.send(initialContext, true);
+        String initResponse = llm.getResponse(initialContext);
         String originalQuery = "How many mangoes did we start with, just reply with a single numerical digit?";
         String subtractQuery = "Remove 1 mango from the basket. How many mangoes left in the basket now, just reply with a single numerical digit?";
 
@@ -156,20 +154,20 @@ public class LlmTestJNI {
             }
 
             // Query to subtract one mango
-            String subtractionResponse = llm.send(subtractQuery, true);
+            String subtractionResponse = llm.getResponse(subtractQuery);
             mangoes -= 1;  // Update our expected count
             checkLlmMatch(subtractionResponse, String.valueOf(mangoes), true);
 
             // Test if model still recalls the starting number
             if (i == originalMangoes - 1) {
-                String response = llm.send(originalQuery, true);
+                String response = llm.getResponse(originalQuery);
                 checkLlmMatch(response, String.valueOf(originalMangoes), true);
                 llm.resetContext();
             }
 
         }
 
-        String postResetResponse = llm.send(originalQuery, true);
+        String postResetResponse = llm.getResponse(originalQuery);
         checkLlmMatch(postResetResponse, String.valueOf(originalMangoes), false);
         llm.freeModel();
     }
@@ -183,22 +181,23 @@ public class LlmTestJNI {
 
         // First Question
         String question1 = "What is the capital of Canada?";
-        String response1 = llm.send(question1, true);
+    
+        String response1 = llm.getResponse(question1);
         checkLlmMatch(response1, "Ottawa", true);
         // Reset Context before second question
         llm.resetContext();
 
         // Second Question (After Reset)
         String question2 = "What country is that capital of? Reply with one word.";
-        String response2 = llm.send(question2, true);
+        String response2 = llm.getResponse(question2);
         checkLlmMatch(response2, "Canada", false);
         // Ask First Question Again. Note an additional reset is required to prevent the generic answer
         // from previous question affecting new topic.
         llm.resetContext();
-        String response3 = llm.send(question1, true);
+        String response3 = llm.getResponse(question1);
 
         checkLlmMatch(response3, "Ottawa", true);
-        String response4 = llm.send(question2, true);
+        String response4 = llm.getResponse(question2);
 
         checkLlmMatch(response4, "Canada", true);
         llm.freeModel();

@@ -93,6 +93,19 @@ public:
      */
     [[nodiscard]] std::string NextToken();
 
+    /** 
+     * Function to produce next token
+     * @param operationId can be used to return an error or check for user cancel operation requests
+     * @return the next Token for Encoded Prompt
+     */
+    std::string CancellableNextToken(long operationId) const;
+
+    /**
+     * Function to request the cancellation of a ongoing operation / functional call
+     * @param operationId associated with operation / functional call
+     */
+    void Cancel(long operationId);
+
     /**
      * @return Percentage of context capacity used in the model cache.
      */
@@ -116,10 +129,10 @@ public:
      * @return Vector of supported input modalities for the active implementation.
      */
     [[nodiscard]] std::vector<std::string> SupportedInputModalities() const;
-    
+
     /**
     * Method to Cancel generation of response tokens. Can be used to stop response once query commences
-    */    
+    */
     void StopGeneration();
 
 protected:
@@ -127,15 +140,12 @@ protected:
 
 private:
     /**
-     * Detect stop words in the internal token buffer and emit correct output.
-     * @return Token string up to a stop word, end token, or partial output.
-     */
-    [[nodiscard]] std::string ContainsStopWord();
+     * Checks token to see if its a stop token
+     * @param token checks token
+     * @return return true if it is a stop token.
+    */
+    [[nodiscard]] bool isStopToken(std::string token);
+
     LlmConfig m_config{};
-    std::atomic<bool> m_evaluatedOnce{false};
-    std::string m_streamEndFlag{};
-    std::string m_tokenBuffer{};
-    int m_maxStopWordLength{};
-    bool m_stopFlag{false};
     bool SupportsModality(const std::vector<std::string> &inptMods, std::string modality) const;
 };

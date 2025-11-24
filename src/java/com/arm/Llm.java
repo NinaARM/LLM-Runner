@@ -10,12 +10,14 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.SubmissionPublisher;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Llm class that extends the SubmissionPublisher
  */
-public class Llm extends SubmissionPublisher<String> {
+public class Llm {
 
-    private final AtomicBoolean evaluatedOnce = new AtomicBoolean(false);
     private static String eosToken = "<eos>";
     private String imagePath = "";
     private boolean imageUploaded = false;
@@ -36,10 +38,10 @@ public class Llm extends SubmissionPublisher<String> {
     /**
      * Create LLM native instance from config.
      *
-     * @param configPathStr Path to config.json file.
+     * @param jsonConfig string contains configuration in json
      * @param sharedLibraryPath Path to shared library folder to load optional shared libs
      */
-    public native void llmInit(String configPathStr, String sharedLibraryPath);
+    public native void llmInit(String jsonConfig, String sharedLibraryPath);
 
     /**
      * @return Checks if the LLM impl supports Image input.
@@ -84,7 +86,20 @@ public class Llm extends SubmissionPublisher<String> {
      * This Method needs to be called in a loop while monitoring for Stop-Words.
      * @return next Token as String
      */
-    private native String getNextToken();
+    public native String getNextToken();
+
+    /**
+     * Method to produce next token
+     * @param operationId can be used to return an error or check for user cancel operation requests
+     * @return the next Token for Encoded Prompt
+     */
+    public native String getNextTokenCancellable(long operationId);
+
+    /**
+     * Function to request the cancellation of a ongoing operation / functional call
+     * @param operationId associated with operation / functional call
+     */
+    public native void cancel(long operationId);
 
     /**
      * @return Chat progress as percentage [0–100].
@@ -107,71 +122,56 @@ public class Llm extends SubmissionPublisher<String> {
      */
     public native String getFrameworkType();
 
-    /**
-     * @param subscriber Subscriber for LLM responses.
-     */
-    public void setSubscriber(Flow.Subscriber<String> subscriber) {
-        this.subscribe(subscriber);
-    }
 
     /**
-     * Send a query asynchronously and stream results via SubmissionPublisher.
-     * @param query  User query.
-     * @param decode Whether to decode tokens as they arrive.
-     */
-    public void sendAsync(String query, boolean decode) {
-        handleEncoding(query);
-        evaluatedOnce.set(true);
-        if (!decode) {
-            return;
-        }
-        while (true) {
-            if (getChatProgress() == 100) {
-                this.submit(eosToken);
-                break;
-            }
-            String token = getNextToken();
-            this.submit(token);
-            if (eosToken.equals(token)) {
-                break;
-            }
-        }
-    }
-
-    /**
-     * Send a query synchronously and return the response string.
+     * Submit a query synchronously.
      *
      * @param query  User query.
-     * @param decode Whether to decode tokens.
-     * @return Response string if decode = true, else empty string.
+     * @return void.
      */
-    public String send(String query, boolean decode) {
-        handleEncoding(query);
-        evaluatedOnce.set(true);
-        if (!decode) {
+    public void submit(String query) {
+
+        System.out.println("Submiting query: '" + query + "'");
+
+        if (query.length() > 0) {
+            handleEncoding(query);
+        }
+    }
+
+    /**
+     * Submits query to LLM and returns response.
+     *
+     * @param query  User query.
+     * @return Response string .
+     */
+    public String getResponse(String query) {
+
+        if (query.length()  <= 0) {
             return "";
         }
+
+        submit(query);
+
         StringBuilder response = new StringBuilder();
         while (getChatProgress() < 100) {
             String token = getNextToken();
             response.append(token);
+
             if (eosToken.equals(token)) {
                 break;
             }
         }
+
         return response.toString();
     }
 
-    /**
-     * Internal helper for encoding queries depending on image state.
-     *
-     * @param query User query.
-     */
+
+
     private void handleEncoding(String query) {
         if (!imageUploaded) {
-            encode(query, "", !evaluatedOnce.get());
+            encode(query, "", true);
         } else {
-            encode(query, imagePath, !evaluatedOnce.get());
+            encode(query, imagePath, false);
             imageUploaded = false;
         }
     }
@@ -181,7 +181,6 @@ public class Llm extends SubmissionPublisher<String> {
      */
     public void freeModel() {
         freeLlm();
-        this.close();
     }
 
     /**
@@ -192,5 +191,16 @@ public class Llm extends SubmissionPublisher<String> {
     public void setImageLocation(String imagePath) {
         this.imagePath = imagePath;
         this.imageUploaded = true;
+    }
+
+    /**
+     * Checks if it is a stop token (case insensetive)
+     *
+     * @param token to check.
+     * 
+     * @return Bool, true if the token is a stop token 
+     */
+    public Boolean isStopToken(String token) {
+        return token.equalsIgnoreCase(eosToken);
     }
 }

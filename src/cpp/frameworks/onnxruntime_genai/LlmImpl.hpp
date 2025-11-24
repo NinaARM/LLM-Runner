@@ -10,6 +10,7 @@
 
 #include "Llm.hpp"
 #include "LlmConfig.hpp"
+#include "LlmBridge.hpp"
 
 #include "ort_genai.h"
 
@@ -76,6 +77,11 @@ public:
      * @return the next token for encoded prompt
      */
     std::string NextToken();
+
+    /**
+    * Method to request the cancellation of a ongoing operation / functional call
+    */
+    void Cancel();
 
     /**
      * The method return the percentage of chat context filled

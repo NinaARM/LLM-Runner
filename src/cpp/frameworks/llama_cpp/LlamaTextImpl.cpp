@@ -367,6 +367,11 @@ std::string LLM::LLMImpl::NextToken()
     return result;
 }
 
+
+void LLM::LLMImpl::Cancel() {
+	LOG_INF("Cancelling current operation");
+}
+
 size_t LLM::LLMImpl::GetChatProgress() const
 {
     return this->m_contextFilled;

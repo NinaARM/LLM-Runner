@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <algorithm>
 #include "Logger.hpp"
+#include "LlmBridge.hpp"
 
 LLM::LLM() {}
 
@@ -22,28 +23,14 @@ void LLM::LlmInit(const LlmConfig &llmConfig, std::string sharedLibraryPath)
     this->m_impl = factory.CreateLLMImpl(llmConfig);
     this->m_config = llmConfig;
     this->m_impl->InitChatParams(this->m_config.GetChat());
-    this->m_maxStopWordLength = 0;
     const auto &stopWords = this->m_config.GetStopWords();
 
-    // Find the size of token buffer to hold tokens before emitting.
-    if (!stopWords.empty()) {
-        for (const auto &word: stopWords) {
-            if (this->m_maxStopWordLength < word.size()) {
-                this->m_maxStopWordLength = word.size();
-            }
-        }
-    }
-
-    if (this->m_maxStopWordLength < 1) {
-        this->m_maxStopWordLength = 1;
-    }
     this->m_impl->LlmInit(this->m_config, sharedLibraryPath);
 }
 
 void LLM::FreeLlm()
 {
     this->m_impl->FreeLlm();
-    this->m_maxStopWordLength = 1;
 }
 
 float LLM::GetEncodeTimings() const
@@ -68,7 +55,6 @@ std::string LLM::SystemInfo() const
 
 void LLM::ResetContext()
 {
-    this->m_tokenBuffer.clear();
     this->m_impl->ResetContext();
 }
 
@@ -112,9 +98,56 @@ bool LLM::SupportsModality(const std::vector<std::string> &inptMods, std::string
 std::string LLM::NextToken()
 {
     auto token = this->m_impl->NextToken();
-    this->m_tokenBuffer += token;
 
-    return this->ContainsStopWord();
+    if (this->isStopToken(token)) {
+        return endToken;
+    } else {
+        return token;
+    }
+}
+
+std::string LLM::CancellableNextToken(long operationId) const
+{
+    auto state = std::make_shared<WorkState>();
+    state->operationId = operationId;
+    addWork(state);
+
+    std::string nextToken = this->m_impl->NextToken();
+
+    auto work = removeWork(state->operationId);
+
+    // Check for cancel
+    if (work->cancelled.load(std::memory_order_acquire)) {
+
+        // We support the option to only build the C++ bindings. This complier directive allows
+        // only the C++ binding to be build and prevents the library attempting to trigger the
+        // callback to the Java layer.
+#if defined(JNI_FOUND)
+        deliverCompletion(state->operationId, RESULT_CANCELLED, "cancelled");
+#endif
+
+        // Returned value won't be used, because operation will be cancelled.
+        // But send end token just in case
+        return  endToken;
+    }
+    for (auto &stopWord: this->m_config.GetStopWords()) {
+        if (nextToken == stopWord) {
+            return endToken;
+        }
+    }
+    return nextToken;
+}
+
+void LLM::Cancel(long operationId)
+{
+    auto state = findWork(operationId);
+    if (!state) {
+        return;
+    }
+    state->cancelled.store(true, std::memory_order_release);
+    
+    
+    this->m_impl->Cancel();
 }
 
 size_t LLM::GetChatProgress() const
@@ -137,35 +170,13 @@ std::vector<std::string> LLM::SupportedInputModalities() const
     return this->m_impl->SupportedInputModalities();
 }
 
-std::string LLM::ContainsStopWord()
+bool LLM::isStopToken(std::string token)
 {
-    if (this->m_stopFlag) {
-        this->m_stopFlag = false;
-        this->m_tokenBuffer.clear();
-        StopGeneration();
-        return endToken;
-    }
-    //Detect Stop Word
-    for (auto &w: this->m_config.GetStopWords()) {
-        if (auto nPos = m_tokenBuffer.find(w); nPos != std::string::npos) {
-            this->m_stopFlag = true;
-            return m_tokenBuffer.substr(0, nPos);
+   for (auto &stopToken: this->m_config.GetStopWords()) {
+        if (token == stopToken) {
+            return true;
         }
     }
 
-    // Emit the tokens which is certainly not initial part of stop-words.
-    if (m_tokenBuffer.length() >= this->m_maxStopWordLength)
-    {
-        std::string result = m_tokenBuffer.substr(0, m_tokenBuffer.length()
-                                                     - m_maxStopWordLength);
-        m_tokenBuffer.erase(0, m_tokenBuffer.length()
-                               - m_maxStopWordLength);
-        return result;
-    }
-    return "";
-}
-
-void LLM::StopGeneration()
-{
-    this->m_impl->StopGeneration();
+    return false;
 }
