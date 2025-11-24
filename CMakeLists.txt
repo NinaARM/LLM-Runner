@@ -61,7 +61,7 @@ include(download-resources)
 add_subdirectory(src)
 
 # Add tests if they are enabled.
-if(BUILD_TESTING)
+if(BUILD_LLM_TESTING)
     enable_testing()
     add_subdirectory(test)
 endif()

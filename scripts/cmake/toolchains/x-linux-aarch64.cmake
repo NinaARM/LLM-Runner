@@ -36,5 +36,3 @@ set(CMAKE_CXX_COMPILER ${CROSS_PREFIX}g++)
 set(CMAKE_AR           ${CROSS_PREFIX}ar)
 set(CMAKE_STRIP        ${CROSS_PREFIX}strip)
 set(CMAKE_LINKER       ${CROSS_PREFIX}ld)
-
-

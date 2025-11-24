@@ -68,6 +68,7 @@ std::string LLM::SystemInfo() const
 
 void LLM::ResetContext()
 {
+    this->m_tokenBuffer.clear();
     this->m_impl->ResetContext();
 }
 

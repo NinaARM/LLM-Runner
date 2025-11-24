@@ -158,7 +158,7 @@ void LLM::LLMImpl::LoadModel()
     this->m_llmModelPtr = OgaModel::Create(* this->m_llmConfigsPtr);
 
     if (this->m_llmModelPtr == nullptr) {
-        THROW_ERROR("Error: unable to load model from " , this->m_modelPath.c_str());
+        THROW_ERROR("Error: unable to load model from %s", this->m_modelPath.c_str());
     }
 
     LOG_INF("Model Loaded");
@@ -241,6 +241,7 @@ void LLM::LLMImpl::ResetContext()
     this->m_isConversationStart = true;
     ResetTimings();
     this->m_contextFilled = 0;
+    this->m_nCurr = 0;
     LOG_INF("Reset Context");
 }
 
@@ -290,11 +291,12 @@ void LLM::LLMImpl::Encode(LlmChat::Payload& payload)
 
         this->m_tokenizerPtr->Encode(prompt.c_str(), * this->m_sequencesPtr);
         this->m_llmGeneratorPtr->AppendTokenSequences(* this->m_sequencesPtr);
-        if (nCurr + this->m_sequencesPtr->SequenceCount(0) >= this->m_nCtx)
+        if (this->m_nCurr + this->m_sequencesPtr->SequenceCount(0) >= this->m_nCtx)
               THROW_ERROR("LLM encoding failed ,context is full");
         // Record finishing time
         this->m_totalEncoderTime += Duration(Clock::now() - startTimeStampEncoder).count();
         this->m_totalEncodedTokens += this->m_sequencesPtr->SequenceCount(0);
+        this->m_nCurr += this->m_sequencesPtr->SequenceCount(0);
     }
     catch (const std::exception& e) {
         THROW_ERROR("Failed to evaluate prompt :%s",e.what());
@@ -318,9 +320,9 @@ std::string LLM::LLMImpl::NextToken()
             this->m_totalDecoderTime += Duration(Clock::now() - startTimeStampDecoder).count();
             this->m_totalDecodedTokens += 1;
 
-            nCurr = this->m_llmGeneratorPtr->GetSequenceCount(0);
-
-            this->m_contextFilled = 100 * nCurr / this->m_nCtx;
+            // Update context fill progress
+            this->m_nCurr += 1;
+            this->m_contextFilled = 100 * this->m_nCurr / this->m_nCtx;
 
             return out;
         }

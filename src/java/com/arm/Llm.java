@@ -125,13 +125,16 @@ public class Llm extends SubmissionPublisher<String> {
         if (!decode) {
             return;
         }
-        while (getChatProgress() < 100) {
-            String token = getNextToken();
-            if (eosToken.equals(token)) {
-                this.submit(token); // signal end-of-stream
+        while (true) {
+            if (getChatProgress() == 100) {
+                this.submit(eosToken);
                 break;
             }
+            String token = getNextToken();
             this.submit(token);
+            if (eosToken.equals(token)) {
+                break;
+            }
         }
     }
 

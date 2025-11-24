@@ -9,7 +9,7 @@
       "cacheVariables": { 
         "LLM_FRAMEWORK": "llama.cpp",
         "BUILD_DEBUG": false,
-        "BUILD_TESTING": true,
+        "BUILD_LLM_TESTING": true,
         "BUILD_BENCHMARK": false,
         "BUILD_JNI_LIB": true
       }

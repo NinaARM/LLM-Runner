@@ -92,11 +92,15 @@ def validate_download(filepath, expected_hash):
     @param expected_hash:  Expected sha256sum
     """
     sha256_hash = hashlib.sha256()
-    with open(filepath, "rb") as f:
-        for byte_block in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(byte_block)
-    actual_hash = sha256_hash.hexdigest()
-    return actual_hash == expected_hash
+    try :
+        with open(filepath, "rb") as f:
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+        actual_hash = sha256_hash.hexdigest()
+        return actual_hash == expected_hash
+    except FileNotFoundError:
+        logging.warning(f"{filepath} is not downloaded")
+        return False
 
 
 def download_resources(resources_file: Path, download_dir: Path,huggingface_token:str=None) -> None:

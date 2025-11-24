@@ -19,7 +19,7 @@ if (GGML_CPU_ALL_VARIANTS)
         file(GLOB GGML_HEADERS "${LLAMA_SRC_DIR}/ggml/src/*.h")
         file(COPY ${GGML_HEADERS} DESTINATION ${CMAKE_CURRENT_SOURCE_DIR})
 
-          # Add the different variants.
+         # Add the different variants.
         if (NOT TARGET ggml-cpu-android_armv8.6_2)
             ggml_add_cpu_backend_variant(android_armv8.6_2
                 DOTPROD

@@ -161,9 +161,9 @@ Flag name | Default | Values | Description |
 |---|---|---|---|
 | LLM_FRAMEWORK | llama.cpp | llama.cpp / mediapipe / onnxruntime-genai / mnn | Specifies the backend framework to be used. |
 | BUILD_DEBUG | OFF | ON/OFF | If set to ON a debug build is configured. |
-| BUILD_TESTING | ON | ON/OFF | Builds the project's functional tests when ON. |
+| BUILD_LLM_TESTING | ON | ON/OFF | Builds the project's functional tests when ON. |
 | BUILD_BENCHMARK | OFF | ON/OFF | Builds the benchmark tests for the project when ON. |
-| BUILD_JNI_BINDINGS | ON | ON/OFF | Builds the JNI bindings for the project. |
+| BUILD_JNI_LIB| ON | ON/OFF | Builds the JNI bindings for the project. |
 | LOG_LEVEL | INFO/DEBUG | DEBUG, INFO, WARN &  ERROR | For BUILD_DEBUG=OFF the default value is INFO. For BUILD_DEBUG=ON, the default value is DEBUG. |
 | USE_KLEIDIAI | ON | ON/OFF | Build the project with KLEIDIAI CPU optimizations; if set to OFF, optimizations are turned off. |
 | CPU_ARCH | Not defined | Armv8.2_1, Armv8.2_2, Armv8.2_3, Armv8.2_4, Armv8.2_5, Armv8.6_1, Armv8.6_2, Armv9.2_1, Armv9.2_2 | Sets the target ISA architecture (AArch64). Not all targets support this flag. Only supported with LLM_FRAMEWORK=llama.cpp when targeting linux-aarch64 only. |

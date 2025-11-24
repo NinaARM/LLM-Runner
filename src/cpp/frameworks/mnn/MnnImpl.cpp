@@ -62,6 +62,7 @@ void LLM::LLMImpl::SetConfig() {
 
 void LLM::LLMImpl::FreeLlm() {
     if(this->m_llm) {
+        this->m_llm->reset();
         this->m_llm.reset();
     }
 }

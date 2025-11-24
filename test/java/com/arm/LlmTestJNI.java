@@ -115,13 +115,17 @@ public class LlmTestJNI {
         String response1 = llm.send(question1, true);
         checkLlmMatch(response1, "Ottawa", true);
 
+        String question2 = "What country is that capital of? Reply with one word.";
+        String response2 = llm.send(question2, true);
+        checkLlmMatch(response2, "Canada", true);
+
         // Send an empty prompt to simulate blank recordings or non-speech tokens being returned by speech recognition;
         // then ask follow-up questions to ensure previous context persists when an empty prompt is injected in the conversation.
         String emptyResponse = llm.send("", true);
 
-        String question2 = "What languages do they speak there?";
-        String response2 = llm.send(question2, true);
-        checkLlmMatch(response2, "English", true);
+        String question3 = "What languages do they speak there?";
+        String response3 = llm.send(question3, true);
+        checkLlmMatch(response3, "English", true);
         llm.freeModel();
     }
 

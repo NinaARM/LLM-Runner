@@ -12,6 +12,12 @@ project(onnxruntime-genai-wrapper
 include(FetchContent)
 include(check-flag)
 
+# Disable GCC 14's range-loop-construct warning-as-error
+if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 14)
+  message(STATUS "GCC >= 14 detected, disabling -Werror for range-loop-construct")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=range-loop-construct")
+endif()
+
 # --------------------------------------------------------------------
 # onnxruntime build
 # --------------------------------------------------------------------
@@ -42,7 +48,7 @@ set(ONNX_BUILD_SHARED_LIBS                        OFF)
 set(ONNXRUNTIME_GIT_URL   "https://github.com/microsoft/onnxruntime.git"
         CACHE STRING "Git URL for onnxruntime repo")
 
-set(ONNXRUNTIME_GIT_TAG   "v1.22.2"
+set(ONNXRUNTIME_GIT_TAG   "v1.23.2"
         CACHE STRING "Path where onnxruntime repo should be cloned")
 
 set(ONNXRUNTIME_SRC_DIR   "${CMAKE_BINARY_DIR}/onnxruntime"
@@ -114,8 +120,8 @@ set(ONNXRT_GENAI_SRC_DIR "${CMAKE_BINARY_DIR}/onnxruntime-genai"
 set(ONNXRT_GENAI_GIT_URL "https://github.com/microsoft/onnxruntime-genai.git"
         CACHE STRING "Git URL for onnxruntime-genai repo")
 
-# Latest stable tag (August 2025)
-set(ONNXRT_GENAI_GIT_TAG "v0.9.0"
+# Latest stable tag (November 2025)
+set(ONNXRT_GENAI_GIT_TAG "v0.11.2"
         CACHE STRING "Git tag / commit SHA for onnxruntime-genai repo")
 
 # --------------------------------------------------------------------
