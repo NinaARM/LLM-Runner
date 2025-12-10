@@ -87,9 +87,9 @@ void LLM::LLMImpl::llama_llm_log_callback(enum ggml_log_level level, const char 
 
 void LLM::LLMImpl::LlmInit(const LlmConfig& config, std::string sharedLibraryPath)
 {
-    ggml_backend_load_all_from_path(sharedLibraryPath.c_str());
     try {
         llama_log_set(llama_llm_log_callback, nullptr);
+        ggml_backend_load_all_from_path(sharedLibraryPath.c_str());
         this->m_config = config;
         this->m_batchSz = this->m_config.GetConfigInt(LlmConfig::ConfigParam::BatchSize);
         this->m_nCtx    = this->m_config.GetConfigInt(LlmConfig::ConfigParam::ContextSize);

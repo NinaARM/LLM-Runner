@@ -60,11 +60,10 @@ void LlamaVisionImpl::LlmInit(const LlmConfig& config, std::string sharedLibrary
     if (config.GetConfigInt(LlmConfig::ConfigParam::ContextSize) <= 0) {
         THROW_INVALID_ARGUMENT("contextSize must be > 0");
     }
-
-    ggml_backend_load_all_from_path(sharedLibraryPath.c_str());
-
+    
     try {
         llama_log_set(llama_llm_log_callback, nullptr);
+        ggml_backend_load_all_from_path(sharedLibraryPath.c_str());
         this->m_config = config;
         this->m_batchSz = this->m_config.GetConfigInt(LlmConfig::ConfigParam::BatchSize);
         this->m_nCtx    = this->m_config.GetConfigInt(LlmConfig::ConfigParam::ContextSize);
