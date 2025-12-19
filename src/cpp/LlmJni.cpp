@@ -380,6 +380,8 @@ Java_com_arm_Llm_supportsImageInputJNI(JNIEnv *env, jobject thiz, jlong llmHandl
 
 /**
  * @brief JNI exported method to cancel an in-flight operation identified by operationId.
+ * This cancel operation is async and relies on the LLM instance periodically checking the status
+ * of the work item to cancel the operation.
  * @param env JNI environment variable passed from JVM layer
  * @param operationId operation identifier to cancel
  */
@@ -591,6 +593,22 @@ void deliverCompletion(long operationId, int rc, const std::string &payload) {
     if (detach) g_vm->DetachCurrentThread();
 }
 
+/**
+ * @brief JNI exported method to cancel an in-flight operation identified by operationId.
+ * This cancel operation is synchronous and calls the cancel method on the LLM
+ * @param env JNI environment variable passed from JVM layer
+ * @param operationId operation identifier to cancel
+ * @param llmHandle native handle returned by llmInitJNI
+ */
+JNIEXPORT void JNICALL Java_com_arm_Llm_cancelJNI(JNIEnv* env, jobject, jlong operationId, jlong llmHandle)
+{
+    auto* llm = LLMCache::Instance().Lookup(llmHandle);
+    if (!llm) {
+        ThrowJavaException(env,ILLEGAL_STATE_EXCEPTION_LOG_MESSAGE);
+    }
+
+    llm->Cancel(operationId);
+}
 
 #ifdef __cplusplus
 }

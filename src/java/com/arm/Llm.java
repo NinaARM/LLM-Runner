@@ -255,10 +255,19 @@ public class Llm {
     }
 
     /**
+     * Native Function to request the cancellation of a ongoing operation / functional call
+     * @param operationId associated with operation / functional call
+     * @param nativeLlmHandle handle to the native LLM instance
+     */
+    public native void cancelJNI(long operationId, long nativeLlmHandle);
+
+    /**
      * Function to request the cancellation of a ongoing operation / functional call
      * @param operationId associated with operation / functional call
      */
-    public native void cancel(long operationId);
+    public void cancel(long operationId) {
+        cancelJNI(operationId, getNativeLlmHandle());
+    }
 
     /**
      * @return Chat progress as percentage [0–100].
