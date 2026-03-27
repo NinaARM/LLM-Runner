@@ -16,8 +16,8 @@ The project uses **CMake presets** to support native x86, macOS or aarch64 build
 
 ```mermaid
 graph TD
-    Prompt[Input Prompt<br/>(text or text+image)]
-    --> App[Application<br/>(C++ API or JNI)]
+    Prompt[Input Prompt (text or text+image)]
+    --> App[Application (C++ API or JNI)]
 
     App --> LLMRunner[LLM-Runner API]
 
