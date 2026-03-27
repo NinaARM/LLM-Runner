@@ -29,12 +29,6 @@ graph TD
 
     KleidiAI --> Output["Generated tokens / text"]
 
-
-    Prompt --> App
-    App --> LLMRunner
-    LLMRunner --> Backend
-    Backend --> Inference
-    KleidiAI --> Output
 ```
 ---
 Typical Flow:
